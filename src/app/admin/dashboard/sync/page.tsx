@@ -68,7 +68,7 @@ export default function SyncPage() {
         <div>
           <h1 className="text-2xl font-bold text-[#1A1A1A]">Data Sync</h1>
           <p className="text-[#4A4A4A] mt-1">
-            Sync enforcement data from Memphis Data Hub (Socrata API)
+            Sync enforcement data from Memphis Data Hub (ArcGIS API)
           </p>
         </div>
 
@@ -193,7 +193,7 @@ export default function SyncPage() {
               disabled={syncing}
               className="px-6 py-3 border border-[#E5E5E5] text-[#1A1A1A] rounded-lg font-semibold hover:bg-[#F8F8F8] disabled:opacity-50"
             >
-              Full Sync (All Data)
+              Full Sync (Last 2 Years)
             </button>
           </div>
         </div>
@@ -209,36 +209,15 @@ export default function SyncPage() {
               <strong className="text-[#1A1A1A]">Dataset:</strong> MPD Traffic Stops
             </p>
             <p>
-              <strong className="text-[#1A1A1A]">API:</strong> Socrata Open Data API
+              <strong className="text-[#1A1A1A]">API:</strong> ArcGIS Feature Server
             </p>
             <p className="mt-4">
-              The sync process pulls traffic stop records including location, violation type,
-              date/time, and demographic data (where available). Data is paginated and rate-limited
-              to be respectful of the API.
+              The sync process pulls traffic stop records including location, event type,
+              date/time, precinct, and ward data. Data is paginated (1,000 records per request)
+              and rate-limited to be respectful of the API. Full dataset contains 700k+ records,
+              so syncs default to last 2 years.
             </p>
           </div>
-        </div>
-
-        {/* Environment Variables */}
-        <div className="bg-[#F8F8F8] rounded-xl p-6 border border-[#E5E5E5]">
-          <h3 className="font-semibold text-[#1A1A1A] mb-3">Configuration</h3>
-          <p className="text-sm text-[#4A4A4A] mb-4">
-            For higher rate limits, set the following environment variable:
-          </p>
-          <code className="block bg-[#1A1A1A] text-[#FFD100] p-4 rounded-lg text-sm">
-            SOCRATA_APP_TOKEN=your_app_token_here
-          </code>
-          <p className="text-sm text-[#4A4A4A] mt-3">
-            Get an app token from{' '}
-            <a
-              href="https://data.memphistn.gov/profile/edit/developer_settings"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[#1A1A1A] hover:underline"
-            >
-              Memphis Data Hub Developer Settings
-            </a>
-          </p>
         </div>
       </div>
     </AdminLayout>

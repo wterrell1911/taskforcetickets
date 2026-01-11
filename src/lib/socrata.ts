@@ -76,13 +76,10 @@ export class MemphisDataClient {
     }
 
     const url = `${this.endpoint}/query?${queryParams.toString()}`;
-    console.log('[ArcGIS] Fetching:', url);
 
     const response = await fetch(url, {
       headers: { Accept: 'application/json' },
     });
-
-    console.log('[ArcGIS] Response status:', response.status);
 
     if (!response.ok) {
       throw new Error(`ArcGIS API error: ${response.status} ${response.statusText}`);
@@ -97,11 +94,9 @@ export class MemphisDataClient {
 
     // ArcGIS returns error in the body, not via HTTP status
     if (data.error) {
-      console.error('[ArcGIS] API Error:', JSON.stringify(data.error));
       throw new Error(`ArcGIS API error: ${data.error.message || JSON.stringify(data.error)}`);
     }
 
-    console.log('[ArcGIS] Got', data.features?.length, 'features');
     return data;
   }
 
@@ -274,36 +269,53 @@ export async function syncMPDData(options: {
   try {
     options.onProgress?.('Starting MPD data sync...', 0);
 
-    // Clear existing MPD records if doing a full sync
-    if (!options.startDate) {
-      await clearEnforcementRecords('mpd');
+    // Default to last 2 years if no start date specified (full dataset is 700k+ records)
+    let effectiveStartDate = options.startDate;
+    if (!effectiveStartDate) {
+      const twoYearsAgo = new Date();
+      twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+      effectiveStartDate = twoYearsAgo.toISOString().split('T')[0];
+      console.log(`[Sync] No start date specified, defaulting to last 2 years: ${effectiveStartDate}`);
     }
+
+    // Clear existing MPD records before sync
+    await clearEnforcementRecords('mpd');
 
     // Fetch data from ArcGIS (Memphis Data Hub)
     const client = new MemphisDataClient();
     const stops = await client.fetchAllTrafficStops({
-      startDate: options.startDate,
+      startDate: effectiveStartDate,
       endDate: options.endDate,
       onProgress: (count) => options.onProgress?.('Fetching records...', count),
     });
 
+    console.log(`[Sync] Fetched ${stops.length} records, transforming...`);
     options.onProgress?.('Transforming records...', stops.length);
 
-    // Transform and store
-    const records = stops.map(stop => client.transformToEnforcementRecord(stop));
-    const count = await addEnforcementRecords(records);
+    // Transform in batches to avoid stack overflow
+    const BATCH_SIZE = 10000;
+    let totalCount = 0;
+
+    for (let i = 0; i < stops.length; i += BATCH_SIZE) {
+      const batch = stops.slice(i, i + BATCH_SIZE);
+      const records = batch.map(stop => client.transformToEnforcementRecord(stop));
+      const count = await addEnforcementRecords(records);
+      totalCount += count;
+      console.log(`[Sync] Stored batch ${Math.floor(i / BATCH_SIZE) + 1}, total: ${totalCount}`);
+    }
 
     await updateSyncLog(syncLog.id, {
       completedAt: new Date().toISOString(),
-      recordsProcessed: count,
+      recordsProcessed: totalCount,
       status: 'completed',
     });
 
-    options.onProgress?.('Sync completed', count);
-    return { success: true, recordsProcessed: count };
+    options.onProgress?.('Sync completed', totalCount);
+    return { success: true, recordsProcessed: totalCount };
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[Sync] Error:', errorMessage);
     await updateSyncLog(syncLog.id, {
       completedAt: new Date().toISOString(),
       status: 'failed',
