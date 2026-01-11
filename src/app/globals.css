@@ -1,0 +1,175 @@
+@import 'tailwindcss';
+
+:root {
+  /* Brand Colors */
+  --color-primary: #1A1A1A;
+  --color-secondary: #4A4A4A;
+  --color-brand-yellow: #FFD100;
+  --color-alert-red: #CF2A27;
+  --color-background: #FFFFFF;
+  --color-background-subtle: #F8F8F8;
+  --color-border: #E5E5E5;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+@theme inline {
+  /* Colors */
+  --color-primary: var(--color-primary);
+  --color-secondary: var(--color-secondary);
+  --color-brand-yellow: var(--color-brand-yellow);
+  --color-alert-red: var(--color-alert-red);
+  --color-background: var(--color-background);
+  --color-background-subtle: var(--color-background-subtle);
+  --color-border: var(--color-border);
+
+  /* Typography */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Base styles */
+body {
+  background: var(--color-background);
+  color: var(--color-primary);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Typography utilities */
+.text-primary {
+  color: var(--color-primary);
+}
+
+.text-secondary {
+  color: var(--color-secondary);
+}
+
+.bg-brand-yellow {
+  background-color: var(--color-brand-yellow);
+}
+
+.bg-subtle {
+  background-color: var(--color-background-subtle);
+}
+
+.border-default {
+  border-color: var(--color-border);
+}
+
+/* Headlines */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 800;
+  color: var(--color-primary);
+  letter-spacing: -0.02em;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-background-subtle);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-secondary);
+}
+
+/* Focus styles */
+*:focus-visible {
+  outline: 2px solid var(--color-brand-yellow);
+  outline-offset: 2px;
+}
+
+/* Button base */
+.btn-primary {
+  background-color: var(--color-brand-yellow);
+  color: var(--color-primary);
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background-color: var(--color-primary);
+  color: white;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background-color: #2a2a2a;
+}
+
+/* Card shadows */
+.shadow-brand {
+  box-shadow: var(--shadow-md);
+}
+
+.shadow-brand-lg {
+  box-shadow: var(--shadow-lg);
+}
+
+/* Highway dashed line accent */
+.highway-line {
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--color-brand-yellow),
+    var(--color-brand-yellow) 40px,
+    transparent 40px,
+    transparent 60px
+  );
+  height: 4px;
+}
+
+/* File input styling */
+input[type='file']::file-selector-button {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border: none;
+  background: var(--color-brand-yellow);
+  color: var(--color-primary);
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.2s;
+}
+
+input[type='file']::file-selector-button:hover {
+  filter: brightness(1.05);
+}
+
+/* Form inputs */
+input:not([type='file']):not([type='checkbox']):not([type='radio']),
+textarea,
+select {
+  border: 1px solid var(--color-border);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input:not([type='file']):not([type='checkbox']):not([type='radio']):focus,
+textarea:focus,
+select:focus {
+  border-color: var(--color-brand-yellow);
+  box-shadow: 0 0 0 3px rgba(255, 209, 0, 0.15);
+}
+
+/* Selection */
+::selection {
+  background-color: var(--color-brand-yellow);
+  color: var(--color-primary);
+}
