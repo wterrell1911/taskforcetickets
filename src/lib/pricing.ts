@@ -11,21 +11,21 @@ export const PRICING_TIERS: PricingTier[] = [
     dismissible: true,
     moneyBackGuarantee: true,
   },
-  // $150 Tier - Standard Violations
+  // $200 Tier - Standard Violations
   {
     category: 'standard',
     label: 'Standard Violation',
     description: 'Speeding 15-29 mph over, no proof of insurance, expired license',
-    price: 15000, // $150.00 in cents
+    price: 20000, // $200.00 in cents
     dismissible: true,
     moneyBackGuarantee: true,
   },
-  // $300 Tier - Major Violations
+  // $500 Tier - Major Violations
   {
     category: 'major',
     label: 'Major Violation',
     description: 'Speeding 30+ mph over, reckless driving, other serious moving violations',
-    price: 30000, // $300.00 in cents
+    price: 50000, // $500.00 in cents
     dismissible: true,
     moneyBackGuarantee: false,
   },
