@@ -75,11 +75,61 @@ export function extractLicenseData(ocrResult: OCRResult): ExtractedLicenseData {
 }
 
 /**
+ * Words to exclude from name extraction (states, cities, common non-name words on licenses)
+ */
+const NAME_EXCLUSIONS = new Set([
+  // States and cities
+  'TENNESSEE', 'TN', 'MEMPHIS', 'NASHVILLE', 'KNOXVILLE', 'CHATTANOOGA',
+  'BARTLETT', 'GERMANTOWN', 'COLLIERVILLE', 'CORDOVA', 'MILLINGTON',
+  // Tennessee specific text
+  'VOLUNTEER', 'STATE', 'VOLUNTEERS',
+  // License field labels
+  'DRIVER', 'LICENSE', 'CLASS', 'EXPIRES', 'ISSUED', 'DOB', 'SEX', 'HT',
+  'WT', 'EYES', 'HAIR', 'ADDRESS', 'CITY', 'ZIP', 'USA',
+  'ID', 'DL', 'END', 'NONE', 'RSTR', 'DD', 'ISS', 'EXP', 'THE', 'OF',
+  // REAL ID markings (common on modern licenses)
+  'REAL', 'SEAL', 'STAR', 'GOLD', 'COMPLIANT',
+  // Other common license text
+  'ORGAN', 'DONOR', 'VETERAN', 'NOT', 'FOR', 'FEDERAL', 'PURPOSES',
+  'DUPLICATE', 'COPY', 'PHOTO', 'SIGNATURE', 'RESTRICTION', 'ENDORSEMENT',
+  'COMMERCIAL', 'CDL', 'UNDER', 'OVER', 'NONE', 'BRN', 'BLK', 'BLU', 'GRN',
+  'HAZ', 'GRY', 'HZL', 'MALE', 'FEMALE', 'FEM', 'IDENTIFICATION',
+]);
+
+/**
+ * Check if a word looks like a valid name part (first or last name)
+ */
+function isValidNamePart(word: string): boolean {
+  if (!word || word.length < 3) return false;  // Names are usually 3+ chars
+  if (NAME_EXCLUSIONS.has(word.toUpperCase())) return false;
+  if (/^\d+$/.test(word)) return false; // All digits
+  if (/^[A-Z]{1}$/.test(word)) return false; // Single letter
+  if (/\d/.test(word)) return false; // Contains any digits (not a name)
+  // Must be all letters
+  if (!/^[A-Z]+$/i.test(word)) return false;
+  return true;
+}
+
+/**
+ * Check if a word is likely a complete name (not truncated)
+ * Names typically end in vowels or common consonant endings
+ */
+function looksLikeCompleteName(word: string): boolean {
+  if (!word || word.length < 5) return false;  // Most real names are 5+ chars
+  const upper = word.toUpperCase();
+  // Common name endings - be more restrictive to avoid partial words
+  const validEndings = ['A', 'E', 'I', 'O', 'Y', 'N', 'S', 'R', 'L', 'D', 'T', 'H'];
+  const lastChar = upper.charAt(upper.length - 1);
+  return validEndings.includes(lastChar);
+}
+
+/**
  * Extract name from license
  * Tennessee DL formats:
  * - LN: LASTNAME / FN: FIRSTNAME MN: MIDDLE
  * - Full name in single field: LASTNAME, FIRSTNAME MIDDLE
  * - Name may appear after "1" or "2" line markers
+ * - Name may appear near numbered fields like 1, 2 on TN licenses
  */
 function extractName(text: string): {
   fullName: string | null;
@@ -92,99 +142,186 @@ function extractName(text: string): {
   let lastName: string | null = null;
   let middleName: string | null = null;
 
-  // TN DL specific patterns - often has numbered lines
-  // Line 1 is usually last name, Line 2 is first name
-  const tnPatterns = [
-    // "1 LASTNAME" pattern
-    /\b1\s+([A-Z]{2,})\b/,
-    // "2 FIRSTNAME MIDDLE" pattern
-    /\b2\s+([A-Z]+)\s*([A-Z]*)\b/,
+  console.log('Extracting name from text...');
+
+  // Try labeled fields first (most reliable)
+  const fnPatterns = [
+    /(?:FN|FIRST\s*NAME?)[:\s]+([A-Z][A-Z]+)/i,
+    /FIRST[:\s]+([A-Z][A-Z]+)/i,
   ];
-
-  // Try TN-specific format first
-  const line1Match = text.match(/\b1\s+([A-Z]{2,})\b/);
-  const line2Match = text.match(/\b2\s+([A-Z]+)\s*([A-Z]*)/);
-
-  if (line1Match && line2Match) {
-    lastName = line1Match[1].trim();
-    firstName = line2Match[1].trim();
-    middleName = line2Match[2]?.trim() || null;
-  }
-
-  // Try labeled fields
-  if (!firstName) {
-    const fnPatterns = [
-      /(?:FN|FIRST\s*(?:NAME)?)[:\s]*([A-Z]+)/i,
-      /FIRST[:\s]*([A-Z]+)/i,
-    ];
-    for (const pattern of fnPatterns) {
-      const match = text.match(pattern);
-      if (match) {
-        firstName = match[1].trim();
-        break;
-      }
+  for (const pattern of fnPatterns) {
+    const match = text.match(pattern);
+    if (match && isValidNamePart(match[1])) {
+      firstName = match[1].trim();
+      console.log(`Found first name via label: ${firstName}`);
+      break;
     }
   }
 
-  if (!lastName) {
-    const lnPatterns = [
-      /(?:LN|LAST\s*(?:NAME)?)[:\s]*([A-Z]+)/i,
-      /LAST[:\s]*([A-Z]+)/i,
-    ];
-    for (const pattern of lnPatterns) {
-      const match = text.match(pattern);
-      if (match) {
-        lastName = match[1].trim();
-        break;
-      }
+  const lnPatterns = [
+    /(?:LN|LAST\s*NAME?)[:\s]+([A-Z][A-Z]+)/i,
+    /LAST[:\s]+([A-Z][A-Z]+)/i,
+  ];
+  for (const pattern of lnPatterns) {
+    const match = text.match(pattern);
+    if (match && isValidNamePart(match[1])) {
+      lastName = match[1].trim();
+      console.log(`Found last name via label: ${lastName}`);
+      break;
     }
   }
 
   // Try to find middle name
   if (!middleName) {
-    const mnMatch = text.match(/(?:MN|MIDDLE\s*(?:NAME)?)[:\s]*([A-Z]+)/i);
-    if (mnMatch) {
+    const mnMatch = text.match(/(?:MN|MIDDLE\s*NAME?)[:\s]+([A-Z]+)/i);
+    if (mnMatch && isValidNamePart(mnMatch[1])) {
       middleName = mnMatch[1].trim();
+    }
+  }
+
+  // Try TN-specific format with numbered lines (1 = last, 2 = first)
+  // The numbers 1 and 2 are field markers on TN licenses
+  if (!firstName || !lastName) {
+    // Look for "1 LASTNAME" pattern (inline) - require 4+ chars for names
+    const line1Match = text.match(/\b1\s+([A-Z]{4,})\b/);
+    // Look for "2 FIRSTNAME MIDDLE" pattern (inline)
+    const line2Match = text.match(/\b2\s+([A-Z]{4,})(?:\s+([A-Z]{2,}))?/);
+
+    if (line1Match && isValidNamePart(line1Match[1]) && looksLikeCompleteName(line1Match[1])) {
+      lastName = lastName || line1Match[1].trim();
+      console.log(`Found last name via line1: ${lastName}`);
+    }
+    if (line2Match && isValidNamePart(line2Match[1]) && looksLikeCompleteName(line2Match[1])) {
+      firstName = firstName || line2Match[1].trim();
+      console.log(`Found first name via line2: ${firstName}`);
+      if (line2Match[2] && isValidNamePart(line2Match[2])) {
+        middleName = middleName || line2Match[2].trim();
+      }
     }
   }
 
   // Try combined name field (LASTNAME, FIRSTNAME MIDDLE format)
   if (!firstName || !lastName) {
     const combinedPatterns = [
-      /([A-Z]{2,}),\s*([A-Z]+)\s+([A-Z]+)/,  // SMITH, JOHN MICHAEL
-      /([A-Z]{2,}),\s*([A-Z]+)/,              // SMITH, JOHN
+      /([A-Z]{2,}),\s*([A-Z]{2,})\s+([A-Z]{2,})/,  // SMITH, JOHN MICHAEL
+      /([A-Z]{2,}),\s*([A-Z]{2,})/,              // SMITH, JOHN
     ];
     for (const pattern of combinedPatterns) {
       const match = text.match(pattern);
       if (match) {
-        lastName = lastName || match[1].trim();
-        firstName = firstName || match[2].trim();
-        if (match[3]) middleName = middleName || match[3].trim();
-        break;
+        if (!lastName && isValidNamePart(match[1])) lastName = match[1].trim();
+        if (!firstName && isValidNamePart(match[2])) firstName = match[2].trim();
+        if (match[3] && !middleName && isValidNamePart(match[3])) middleName = match[3].trim();
+        if (firstName && lastName) break;
       }
     }
   }
 
-  // Try to find any capitalized name-like sequences if still missing
-  if (!firstName && !lastName) {
-    // Look for patterns like "NAME: JOHN SMITH" or standalone names
-    const nameFieldMatch = text.match(/NAME[:\s]+([A-Z]+(?:\s+[A-Z]+)+)/i);
-    if (nameFieldMatch) {
-      const nameParts = nameFieldMatch[1].trim().split(/\s+/);
-      if (nameParts.length >= 2) {
-        firstName = nameParts[0];
-        lastName = nameParts[nameParts.length - 1];
-        if (nameParts.length === 3) {
-          middleName = nameParts[1];
+  // Parse line by line looking for name patterns
+  if (!firstName || !lastName) {
+    const lines = text.split(/[\n\r]+/);
+    console.log(`Parsing ${lines.length} lines for names...`);
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+
+      // If we see a "1" or "LN" marker, check same line and next line for last name
+      if (/^1$|^LN$/i.test(line)) {
+        // Check next line for the name
+        if (i + 1 < lines.length) {
+          const nextLine = lines[i + 1].trim();
+          const parts = nextLine.split(/\s+/);
+          for (const part of parts) {
+            if (isValidNamePart(part) && looksLikeCompleteName(part) && !lastName) {
+              lastName = part;
+              console.log(`Found last name after marker: ${lastName}`);
+              break;
+            }
+          }
+        }
+      }
+
+      // If we see a "2" or "FN" marker, check same line and next line for first name
+      if (/^2$|^FN$/i.test(line)) {
+        if (i + 1 < lines.length) {
+          const nextLine = lines[i + 1].trim();
+          const parts = nextLine.split(/\s+/);
+          if (parts[0] && isValidNamePart(parts[0]) && looksLikeCompleteName(parts[0]) && !firstName) {
+            firstName = parts[0];
+            console.log(`Found first name after marker: ${firstName}`);
+            if (parts[1] && isValidNamePart(parts[1]) && parts[1].length >= 2 && !middleName) {
+              middleName = parts[1];
+            }
+          }
+        }
+      }
+
+      // Also check if the marker is on the same line as the name: "1 WHITE" or "2 JANIKA"
+      const inlineMatch = line.match(/^([12])\s+([A-Z]{4,})(?:\s+([A-Z]{2,}))?$/);
+      if (inlineMatch) {
+        const [, num, name1, name2] = inlineMatch;
+        if (num === '1' && isValidNamePart(name1) && looksLikeCompleteName(name1) && !lastName) {
+          lastName = name1;
+          console.log(`Found inline last name: ${lastName}`);
+        } else if (num === '2' && isValidNamePart(name1) && looksLikeCompleteName(name1) && !firstName) {
+          firstName = name1;
+          console.log(`Found inline first name: ${firstName}`);
+          if (name2 && isValidNamePart(name2) && !middleName) {
+            middleName = name2;
+          }
         }
       }
     }
   }
 
-  // Build full name
+  // Look for "NAME" field directly
+  if (!firstName || !lastName) {
+    const nameFieldMatch = text.match(/NAME[:\s]+([A-Z]{2,})(?:[,\s]+([A-Z]{2,}))?(?:\s+([A-Z]{2,}))?/i);
+    if (nameFieldMatch) {
+      // Could be "NAME: LAST, FIRST MIDDLE" or "NAME: FIRST LAST"
+      const [, part1, part2, part3] = nameFieldMatch;
+      if (part1 && part2) {
+        if (!lastName && isValidNamePart(part1)) lastName = part1;
+        if (!firstName && isValidNamePart(part2)) firstName = part2;
+        if (part3 && !middleName && isValidNamePart(part3)) middleName = part3;
+      }
+    }
+  }
+
+  // Final fallback: look for any capitalized name-like words
+  if (!firstName && !lastName) {
+    console.log('Using fallback name extraction...');
+    // Look for sequences of capitalized words that could be names
+    const potentialNames: string[] = [];
+    const nameRegex = /\b([A-Z]{5,})\b/g;  // Require 5+ chars for fallback to avoid partial words
+    let match;
+    while ((match = nameRegex.exec(text)) !== null) {
+      const word = match[1];
+      // Must be valid AND look like a complete name (not truncated)
+      if (isValidNamePart(word) && looksLikeCompleteName(word)) {
+        potentialNames.push(word);
+      }
+    }
+
+    console.log('Potential names found:', potentialNames);
+
+    if (potentialNames.length >= 2) {
+      // Try to find the most likely first/last names
+      // On TN licenses, last name appears first (line 1), then first name (line 2)
+      // So in text order: last name, then first name
+      lastName = potentialNames[0];
+      firstName = potentialNames[1];
+    } else if (potentialNames.length === 1) {
+      // If only one name found, it's probably the last name
+      lastName = potentialNames[0];
+    }
+  }
+
+  // Build full name (order: First Middle Last for display)
   if (firstName || lastName) {
     const parts = [firstName, middleName, lastName].filter(Boolean);
     fullName = parts.join(' ');
+    console.log(`Final name: ${fullName}`);
   }
 
   return { fullName, firstName, lastName, middleName };
@@ -233,27 +370,57 @@ function extractLicenseNumber(text: string): string | null {
  */
 function extractDateOfBirth(text: string): string | null {
   const patterns = [
-    // TN specific - often marked with 3
-    /\b3\s*(\d{2}[-\/]?\d{2}[-\/]?\d{4})/,
-    // Standard DOB patterns
+    // Standard DOB patterns with label - highest priority
     /DOB[:\s]*(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})/i,
     /DATE\s*OF\s*BIRTH[:\s]*(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})/i,
-    /BIRTH\s*DATE[:\s]*(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})/i,
+    /BIRTH\s*(?:DATE)?[:\s]*(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})/i,
     /BORN[:\s]*(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})/i,
-    // MMDDYYYY format (no separators)
+    // TN specific - DOB followed by 8 digits MMDDYYYY
     /DOB[:\s]*(\d{8})/i,
-    // Look for a date that's clearly in the past (DOB range 1940-2010)
-    /\b((?:0[1-9]|1[0-2])[-\/]?(?:0[1-9]|[12]\d|3[01])[-\/]?(?:19[4-9]\d|20[0-1]\d))\b/,
+    // TN specific - often marked with "3" followed by date
+    /\b3\s+(\d{2}[-\/]\d{2}[-\/]\d{4})/,
+    // Look for MM/DD/YYYY pattern in past (1940-2010) - likely DOB
+    /\b((?:0[1-9]|1[0-2])\/(?:0[1-9]|[12]\d|3[01])\/(?:19[4-9]\d|20[0-1]\d))\b/,
+    // Look for MM-DD-YYYY pattern in past
+    /\b((?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])-(?:19[4-9]\d|20[0-1]\d))\b/,
+    // MMDDYYYY without separators (must be in past)
+    /\b((?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])(?:19[4-9]\d|20[0-1]\d))\b/,
   ];
 
   for (const pattern of patterns) {
     const match = text.match(pattern);
     if (match) {
-      return normalizeDate(match[1]);
+      const normalized = normalizeDate(match[1]);
+      // Validate it looks like a reasonable DOB (not a future date, not too old)
+      if (isValidDOB(normalized)) {
+        return normalized;
+      }
     }
   }
 
   return null;
+}
+
+/**
+ * Validate a date looks like a reasonable DOB
+ */
+function isValidDOB(dateStr: string): boolean {
+  const match = dateStr.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  if (!match) return false;
+
+  const [, month, day, year] = match;
+  const yearNum = parseInt(year, 10);
+  const monthNum = parseInt(month, 10);
+  const dayNum = parseInt(day, 10);
+
+  // Year should be between 1920 and 2015 (reasonable driving age)
+  if (yearNum < 1920 || yearNum > 2015) return false;
+  // Month should be 1-12
+  if (monthNum < 1 || monthNum > 12) return false;
+  // Day should be 1-31
+  if (dayNum < 1 || dayNum > 31) return false;
+
+  return true;
 }
 
 /**

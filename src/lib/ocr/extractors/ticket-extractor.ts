@@ -11,7 +11,20 @@ import { OCRResult, ExtractedTicketData } from '../ocr-provider';
  */
 export function extractTicketData(ocrResult: OCRResult): ExtractedTicketData {
   const text = ocrResult.rawText.toUpperCase();
+  const originalText = ocrResult.rawText; // Keep original case for display
   const warnings: string[] = [];
+
+  // Debug: Log raw OCR text
+  console.log('=== TICKET OCR DEBUG ===');
+  console.log('Raw text:', originalText);
+  console.log('Confidence:', ocrResult.confidence);
+  console.log('========================');
+
+  // Check if this is a camera ticket (red light, speed camera)
+  const isCameraTicket = detectCameraTicket(text);
+  if (isCameraTicket) {
+    warnings.push('This appears to be a camera ticket (civil violation) - we cannot process these');
+  }
 
   // Extract court date
   const courtDate = extractCourtDate(text);
@@ -64,32 +77,101 @@ export function extractTicketData(ocrResult: OCRResult): ExtractedTicketData {
     violationTime,
     fineAmount,
     statuteNumbers,
+    isCameraTicket,
   };
 }
 
 /**
  * Extract court date from ticket text
+ * Memphis tickets have various formats - need to be very flexible
  */
 function extractCourtDate(text: string): string | null {
-  // Pattern: COURT DATE followed by date
+  console.log('Searching for court date in text...');
+
+  // Pattern: COURT DATE followed by date - many variations
   const courtDatePatterns = [
+    // Standard labeled formats
     /COURT\s*DATE[:\s]*(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})/i,
-    /APPEAR\s*(?:BY|ON|BEFORE)[:\s]*(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})/i,
+    /APPEAR\s*(?:BY|ON|BEFORE|DATE)?[:\s]*(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})/i,
     /MUST\s*APPEAR[:\s]*(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})/i,
     /DATE\s*TO\s*APPEAR[:\s]*(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})/i,
-    // Month name patterns
-    /COURT\s*DATE[:\s]*(\w+\s+\d{1,2},?\s*\d{4})/i,
-    /APPEAR\s*(?:BY|ON|BEFORE)[:\s]*(\w+\s+\d{1,2},?\s*\d{4})/i,
+    /HEARING\s*DATE[:\s]*(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})/i,
+    /SCHEDULED[:\s]*(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})/i,
+
+    // Memphis/TN specific patterns
+    /ARRAIGNMENT[:\s]*(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})/i,
+    /TRIAL\s*DATE[:\s]*(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})/i,
+    /GENERAL\s*SESSIONS[^]*?(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})/i,
+
+    // Month name patterns (various formats)
+    /COURT\s*DATE[:\s]*((?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z]*\.?\s*\d{1,2},?\s*\d{4})/i,
+    /APPEAR[:\s]*((?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z]*\.?\s*\d{1,2},?\s*\d{4})/i,
+    /((?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z]*\.?\s*\d{1,2},?\s*202[5-9])/i,
+
+    // Look for date near "COURT" keyword (within same line or nearby)
+    /COURT[^\n]*(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})/i,
+    /(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})[^\n]*COURT/i,
+
+    // Date after common markers
+    /DATE[:\s]*(\d{1,2}[-\/]\d{1,2}[-\/]202[5-9])/i,
+    /DT[:\s]*(\d{1,2}[-\/]\d{1,2}[-\/]202[5-9])/i,
+
+    // Look for any future date (2025-2030) as potential court date
+    /(\d{1,2}[-\/]\d{1,2}[-\/](?:202[5-9]|2030))/,
   ];
 
   for (const pattern of courtDatePatterns) {
     const match = text.match(pattern);
     if (match) {
-      return normalizeDate(match[1]);
+      console.log(`Matched pattern, found: ${match[1]}`);
+      const normalized = normalizeDate(match[1]);
+      // Validate it's a future date (court dates are in the future)
+      if (isFutureDate(normalized)) {
+        console.log(`Valid future date found: ${normalized}`);
+        return normalized;
+      }
     }
   }
 
+  // Fallback: find any future date in the text
+  console.log('No labeled date found, searching for any future date...');
+  const allDates = text.match(/\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}/g) || [];
+  console.log(`Found ${allDates.length} potential dates:`, allDates);
+
+  for (const date of allDates) {
+    const normalized = normalizeDate(date);
+    if (isFutureDate(normalized)) {
+      console.log(`Future date found in fallback: ${normalized}`);
+      return normalized;
+    }
+  }
+
+  // Try month name dates as fallback
+  const monthDates = text.match(/(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z]*\.?\s*\d{1,2},?\s*\d{4}/gi) || [];
+  for (const date of monthDates) {
+    const normalized = normalizeDate(date);
+    if (isFutureDate(normalized)) {
+      return normalized;
+    }
+  }
+
+  console.log('No court date found');
   return null;
+}
+
+/**
+ * Check if a date is in the future (likely a court date)
+ */
+function isFutureDate(dateStr: string): boolean {
+  const match = dateStr.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  if (!match) return false;
+
+  const [, month, day, year] = match;
+  const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+
+  return date >= now;
 }
 
 /**
@@ -140,25 +222,61 @@ function extractCourtLocation(text: string): string | null {
 
 /**
  * Extract citation/ticket number
+ * Memphis Police citation formats vary widely
  */
 function extractCitationNumber(text: string): string | null {
+  console.log('Searching for citation number...');
+
   const patterns = [
-    /CITATION\s*(?:NO|NUMBER|#)[:\s]*([A-Z0-9-]+)/i,
-    /TICKET\s*(?:NO|NUMBER|#)[:\s]*([A-Z0-9-]+)/i,
-    /CASE\s*(?:NO|NUMBER|#)[:\s]*([A-Z0-9-]+)/i,
+    // Labeled citation numbers
+    /CITATION\s*(?:NO|NUMBER|#)?[:\s]*([A-Z0-9-]+)/i,
+    /TICKET\s*(?:NO|NUMBER|#)?[:\s]*([A-Z0-9-]+)/i,
+    /CASE\s*(?:NO|NUMBER|#)?[:\s]*([A-Z0-9-]+)/i,
+    /SUMMONS\s*(?:NO|NUMBER|#)?[:\s]*([A-Z0-9-]+)/i,
+    /UNIFORM\s*CITATION[:\s]*([A-Z0-9-]+)/i,
+    /UTC\s*(?:NO|NUMBER|#)?[:\s]*([A-Z0-9-]+)/i,
+
+    // Common abbreviations
+    /(?:CIT|CITE|CTN)[:\s#]*([A-Z0-9-]+)/i,
     /(?:NO|NUMBER|#)[:\s]*([A-Z]{1,3}[\s-]?\d{6,10})/i,
+
+    // Memphis Police patterns (MPD prefix)
+    /MPD[:\s-]*([A-Z0-9-]+)/i,
+    /MEMPHIS\s*(?:POLICE|PD)[:\s-]*([A-Z0-9-]+)/i,
+
     // TN citation format patterns
-    /([A-Z]{2,3}\d{7,10})/,
-    /(\d{2}-\d{6,8})/,
+    /([A-Z]{2,4}[-\s]?\d{6,10})/,  // Letters followed by numbers
+    /(\d{2,4}[-]\d{4,8})/,         // Numbers with dash
+    /([A-Z]\d{2}[-]\d{6})/,        // Single letter + 2 digits + dash + 6 digits
+    /(\d{10,12})/,                  // Long numeric only
+
+    // Shelby County patterns
+    /SHELBY[:\s]*([A-Z0-9-]+)/i,
+    /(\d{4}-[A-Z]{2,3}-\d+)/i,     // Year-prefix-number format
   ];
 
   for (const pattern of patterns) {
     const match = text.match(pattern);
-    if (match) {
-      return match[1].trim();
+    if (match && match[1].length >= 6) {  // Citation numbers are usually at least 6 chars
+      const citation = match[1].trim();
+      // Validate it looks like a citation (not just random text)
+      if (/\d{4,}/.test(citation) || /[A-Z]{2,}\d+/.test(citation)) {
+        console.log(`Found citation: ${citation}`);
+        return citation;
+      }
     }
   }
 
+  // Fallback: look for any long alphanumeric string that could be a citation
+  const potentialCitations = text.match(/\b([A-Z]{0,4}[-]?\d{6,12})\b/g) || [];
+  for (const citation of potentialCitations) {
+    if (citation.length >= 6 && /\d{4,}/.test(citation)) {
+      console.log(`Found potential citation in fallback: ${citation}`);
+      return citation;
+    }
+  }
+
+  console.log('No citation number found');
   return null;
 }
 
@@ -242,23 +360,15 @@ function extractOfficerInfo(text: string): { officerName: string | null; officer
 
 /**
  * Extract violation location
+ * NOTE: Disabled - too unreliable on handwritten Memphis tickets
+ * Users should enter this information manually
  */
-function extractViolationLocation(text: string): string | null {
-  const patterns = [
-    /LOCATION[:\s]*([^\n]+)/i,
-    /(?:AT|ON|NEAR)[:\s]*(\d+\s*[A-Z\s]+(?:ST|AVE|BLVD|RD|DR|HWY|PKWY)[^\n]*)/i,
-    /OCCURRED\s*(?:AT|ON)[:\s]*([^\n]+)/i,
-    /(I-\d+|INTERSTATE\s*\d+)[^\n]*/i,
-    /(\d+\s+[A-Z\s]+(?:STREET|AVENUE|BOULEVARD|ROAD|DRIVE|HIGHWAY|PARKWAY))/i,
-  ];
-
-  for (const pattern of patterns) {
-    const match = text.match(pattern);
-    if (match) {
-      return cleanText(match[1] || match[0]);
-    }
-  }
-
+function extractViolationLocation(_text: string): string | null {
+  // Violation location extraction is disabled because:
+  // 1. Memphis tickets have handwritten/inconsistent formats
+  // 2. OCR often picks up court info instead of violation location
+  // 3. False positives like "270 NO DRIVE" are worse than no data
+  // The intake form allows users to provide this info manually
   return null;
 }
 
@@ -401,4 +511,51 @@ function cleanText(text: string): string {
     .replace(/\s+/g, ' ')
     .replace(/[^\w\s,.-]/g, '')
     .trim();
+}
+
+/**
+ * Detect if this is a camera ticket (red light camera, speed camera, etc.)
+ * These are civil violations that cannot be processed
+ */
+function detectCameraTicket(text: string): boolean {
+  const cameraIndicators = [
+    // Direct camera references
+    /RED\s*LIGHT\s*CAMERA/i,
+    /SPEED\s*CAMERA/i,
+    /PHOTO\s*ENFORCEMENT/i,
+    /PHOTO\s*RADAR/i,
+    /CAMERA\s*ENFORCEMENT/i,
+    /AUTOMATED\s*ENFORCEMENT/i,
+    /TRAFFIC\s*CAMERA/i,
+    /INTERSECTION\s*CAMERA/i,
+
+    // Common camera ticket vendors/systems
+    /REDFLEX/i,
+    /AMERICAN\s*TRAFFIC\s*SOLUTIONS/i,
+    /ATS\s*PROCESSING/i,
+    /XEROX\s*STATE/i,
+    /CONDUENT/i,
+    /VERRA\s*MOBILITY/i,
+    /GATSO/i,
+
+    // Civil violation indicators
+    /NOTICE\s*OF\s*VIOLATION/i,  // Camera tickets often say this instead of "citation"
+    /CIVIL\s*PENALTY/i,
+    /CIVIL\s*VIOLATION/i,
+    /REGISTERED\s*OWNER/i,  // Camera tickets go to registered owner
+    /VEHICLE\s*OWNER/i,
+
+    // Specific Memphis/TN camera programs
+    /SCHOOL\s*ZONE\s*CAMERA/i,
+    /SCHOOL\s*SPEED\s*ZONE.*CAMERA/i,
+  ];
+
+  for (const pattern of cameraIndicators) {
+    if (pattern.test(text)) {
+      console.log(`Camera ticket detected: matched pattern ${pattern}`);
+      return true;
+    }
+  }
+
+  return false;
 }

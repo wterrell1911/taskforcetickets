@@ -35,11 +35,13 @@ function getCredentials(): LawPayCredentials {
 
 /**
  * Get authorization header for API requests
+ * 8am/LawPay uses HTTP Basic Auth with secret key as username, empty password
  */
 function getAuthHeader(): string {
   const { secretKey } = getCredentials();
-  // LawPay uses Bearer token authentication
-  return `Bearer ${secretKey}`;
+  // 8am API uses Basic Auth: base64(secretKey:)
+  const credentials = Buffer.from(`${secretKey}:`).toString('base64');
+  return `Basic ${credentials}`;
 }
 
 // Result types
@@ -88,23 +90,39 @@ export async function createCharge(data: {
   try {
     const { accountId } = getCredentials();
 
+    const requestBody = {
+      amount: Math.round(data.amount * 100), // Convert to cents
+      account_id: accountId,
+      method: data.tokenId,
+      reference: data.caseId,
+      description: data.description,
+      email: data.customerEmail,
+    };
+
+    console.log('LawPay charge request:', {
+      url: `${LAWPAY_API_URL}/charges`,
+      tokenId: data.tokenId,
+      amount: requestBody.amount,
+    });
+
     const response = await fetch(`${LAWPAY_API_URL}/charges`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: getAuthHeader(),
       },
-      body: JSON.stringify({
-        amount: Math.round(data.amount * 100), // Convert to cents
-        account_id: accountId,
-        method: data.tokenId,
-        reference: data.caseId,
-        description: data.description,
-        email: data.customerEmail,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
-    const result = await response.json();
+    const responseText = await response.text();
+    console.log('LawPay charge response:', response.status, responseText);
+
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch {
+      return { success: false, error: `Invalid response: ${responseText}` };
+    }
 
     if (result.status === 'AUTHORIZED' || result.status === 'COMPLETED') {
       return { success: true, chargeId: result.id, status: result.status };

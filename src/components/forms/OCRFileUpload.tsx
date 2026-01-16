@@ -365,7 +365,6 @@ function getKeyFields(data: ExtractedData): Array<{ label: string; value: string
       { label: 'Court Date', value: data.courtDate },
       { label: 'Citation #', value: data.citationNumber },
       { label: 'Violation', value: data.violations[0] || null },
-      { label: 'Location', value: data.violationLocation },
     ];
   } else if (data.documentType === 'license') {
     return [

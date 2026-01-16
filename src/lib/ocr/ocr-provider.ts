@@ -92,6 +92,7 @@ export interface ExtractedTicketData extends ExtractedDocumentData {
   violationTime: string | null;
   fineAmount: string | null;
   statuteNumbers: string[];
+  isCameraTicket: boolean; // Red light camera, speed camera - civil violations we can't handle
 }
 
 /**

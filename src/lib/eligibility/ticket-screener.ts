@@ -23,7 +23,7 @@ export interface TicketScreeningResult {
   eligible: boolean | null; // null = unknown, requires manual review
   status: 'accepted_for_review' | 'auto_rejected' | 'manual_review_required';
   rejectionReason?: string;
-  rejectionCode?: 'PARKING_TICKET' | 'CDL_VEHICLE' | 'SPEED_OVER_LIMIT' | 'MANUAL_REVIEW_REQUIRED' | 'LOW_CONFIDENCE';
+  rejectionCode?: 'PARKING_TICKET' | 'CDL_VEHICLE' | 'SPEED_OVER_LIMIT' | 'MANUAL_REVIEW_REQUIRED' | 'LOW_CONFIDENCE' | 'CAMERA_TICKET';
   requiresManualReview: boolean;
   speedOver?: number | null;
   jurisdiction?: Jurisdiction;
@@ -73,6 +73,17 @@ export function screenTicket(input: ScreeningInput): TicketScreeningResult {
       status: 'auto_rejected',
       rejectionReason: 'Parking tickets are not eligible for this service. We only handle moving violations such as speeding tickets.',
       rejectionCode: 'PARKING_TICKET',
+      requiresManualReview: false,
+    };
+  }
+
+  // 1b. CHECK FOR CAMERA TICKETS (red light, speed camera - civil violations)
+  if (ticketData.isCameraTicket) {
+    return {
+      eligible: false,
+      status: 'auto_rejected',
+      rejectionReason: 'Camera tickets (red light cameras, speed cameras) are civil violations that we cannot process. These tickets are issued to the vehicle owner, not the driver, and require a different legal process.',
+      rejectionCode: 'CAMERA_TICKET',
       requiresManualReview: false,
     };
   }
@@ -218,6 +229,20 @@ export function screenTicketWithConfidence(
       status: 'auto_rejected',
       rejectionCode: 'PARKING_TICKET',
       rejectionReason: 'Parking tickets are not eligible for this service.',
+      requiresManualReview: false,
+      confidenceInfo,
+    };
+  }
+
+  // Check for camera tickets (red light, speed camera)
+  const cameraKeywords = ['red light camera', 'speed camera', 'photo enforcement', 'camera enforcement',
+    'automated enforcement', 'notice of violation', 'civil penalty', 'registered owner', 'redflex', 'verra mobility'];
+  if (cameraKeywords.some((kw) => rawText.includes(kw))) {
+    return {
+      eligible: false,
+      status: 'auto_rejected',
+      rejectionCode: 'CAMERA_TICKET',
+      rejectionReason: 'Camera tickets (red light cameras, speed cameras) are civil violations that we cannot process.',
       requiresManualReview: false,
       confidenceInfo,
     };
@@ -383,6 +408,18 @@ export function screenTicketWithDropdown(input: DropdownScreeningInput): TicketS
         status: 'auto_rejected',
         rejectionReason: 'Parking tickets are not eligible for this service. We only handle moving violations such as speeding tickets.',
         rejectionCode: 'PARKING_TICKET',
+        requiresManualReview: false,
+      };
+    }
+
+    // 1b. CHECK FOR CAMERA TICKETS
+    const cameraKeywords = ['camera', 'red light camera', 'speed camera', 'photo enforcement', 'automated', 'civil penalty'];
+    if (cameraKeywords.some((kw) => violationLower.includes(kw))) {
+      return {
+        eligible: false,
+        status: 'auto_rejected',
+        rejectionReason: 'Camera tickets (red light cameras, speed cameras) are civil violations that we cannot process. These tickets are issued to the vehicle owner, not the driver, and require a different legal process.',
+        rejectionCode: 'CAMERA_TICKET',
         requiresManualReview: false,
       };
     }

@@ -5,7 +5,7 @@ import { Logo } from '@/components/ui/Logo';
 
 interface EligibilityRejectionProps {
   reason: string;
-  rejectionCode?: 'PARKING_TICKET' | 'CDL_VEHICLE' | 'SPEED_OVER_LIMIT' | 'MANUAL_REVIEW_REQUIRED' | 'LOW_CONFIDENCE';
+  rejectionCode?: 'PARKING_TICKET' | 'CDL_VEHICLE' | 'SPEED_OVER_LIMIT' | 'MANUAL_REVIEW_REQUIRED' | 'LOW_CONFIDENCE' | 'CAMERA_TICKET';
   speedOver?: number | null;
   onGoBack?: () => void;
 }
@@ -29,6 +29,13 @@ export function EligibilityRejection({ reason, rejectionCode, speedOver, onGoBac
         return (
           <svg className="w-12 h-12 text-[#CF2A27]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        );
+      case 'CAMERA_TICKET':
+        return (
+          <svg className="w-12 h-12 text-[#CF2A27]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
         );
       case 'LOW_CONFIDENCE':
@@ -72,6 +79,14 @@ export function EligibilityRejection({ reason, rejectionCode, speedOver, onGoBac
             Tickets {speedOver && speedOver > 15 ? `showing ${speedOver} MPH over the limit` : 'of this severity'} typically
             require a more strategic approach. Our attorneys can still help, but we&apos;ll
             need to discuss your case directly.
+          </p>
+        );
+      case 'CAMERA_TICKET':
+        return (
+          <p className="text-[#4A4A4A]">
+            Camera tickets (red light cameras, speed cameras) are civil violations, not criminal citations.
+            They are issued to the registered vehicle owner rather than the driver, and follow a different
+            legal process. We specialize in criminal traffic citations issued by law enforcement officers.
           </p>
         );
       case 'LOW_CONFIDENCE':

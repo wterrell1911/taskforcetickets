@@ -38,9 +38,15 @@ export async function POST(request: NextRequest) {
 
     // Verify amount matches case
     const expectedAmount = caseData.amount_charged / 100; // Convert from cents
+    console.log('Payment amount check:', {
+      receivedAmount: amount,
+      expectedAmount,
+      caseAmountCharged: caseData.amount_charged,
+      difference: Math.abs(amount - expectedAmount)
+    });
     if (Math.abs(amount - expectedAmount) > 0.01) {
       return NextResponse.json(
-        { success: false, error: 'Amount mismatch' },
+        { success: false, error: `Amount mismatch: received ${amount}, expected ${expectedAmount}` },
         { status: 400 }
       );
     }

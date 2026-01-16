@@ -1,6 +1,7 @@
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { Hero } from '@/components/landing/Hero';
+import { Stats } from '@/components/landing/Stats';
 import { PointsExplainer } from '@/components/landing/PointsExplainer';
 import { HowItWorks } from '@/components/landing/HowItWorks';
 import { Pricing } from '@/components/landing/Pricing';
@@ -13,6 +14,7 @@ export default function Home() {
       <Header />
       <main className="min-h-screen bg-white">
         <Hero />
+        <Stats />
         <PointsExplainer />
         <HowItWorks />
         <Pricing />

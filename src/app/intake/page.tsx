@@ -14,7 +14,9 @@ import { PromoCodeInput } from '@/components/forms/PromoCodeInput';
 import { EligibilityRejection } from '@/components/forms/EligibilityRejection';
 import { ManualReviewNotice } from '@/components/forms/ManualReviewNotice';
 import { ManualEntryForm, ManualEntryData } from '@/components/forms/ManualEntryForm';
-import { PaymentForm } from '@/components/payments/PaymentForm';
+// import { PaymentForm } from '@/components/payments/PaymentForm'; // LawPay - disabled
+import { StripePaymentForm } from '@/components/payments/StripePaymentForm';
+import { InsuranceSavingsCalculator } from '@/components/InsuranceSavingsCalculator';
 import { getPriceForCategory, isDismissible, PRICING_TIERS } from '@/lib/pricing';
 import { isValidEmail, isValidPhone, isBeforeDeadline, formatCurrency } from '@/lib/utils';
 import { screenTicket, screenTicketWithDropdown, TicketScreeningResult } from '@/lib/eligibility/ticket-screener';
@@ -313,10 +315,38 @@ export default function IntakePage() {
       }
 
       // CASE 1: Manual review required (low OCR confidence)
-      // Submit case for manual review - no payment required yet
+      // Still requires payment if payment would normally be required
       if (eligibilityResult?.requiresManualReview) {
-        console.log('Submitting for manual review...');
-        fd.append('finalPrice', '0'); // No payment for manual review cases
+        console.log('Manual review required...');
+
+        // If payment is required, proceed to payment step first
+        if (needsPayment) {
+          console.log('Payment required before manual review submission');
+          fd.append('finalPrice', String(finalPrice * 100));
+          fd.append('paymentPending', 'true');
+          fd.append('status', 'pending_manual_review');
+
+          const response = await fetch('/api/cases/submit', {
+            method: 'POST',
+            body: fd,
+          });
+          const result = await response.json();
+          console.log('Manual review case creation result:', result);
+
+          if (result.success && result.caseId) {
+            setCaseId(result.caseId);
+            setCurrentStep('payment');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          } else {
+            setErrors({ submit: result.error || 'Failed to create case' });
+          }
+          setIsSubmitting(false);
+          return;
+        }
+
+        // Free promo code or non-dismissible - submit directly for manual review
+        console.log('Submitting for manual review (no payment required)...');
+        fd.append('finalPrice', '0');
         fd.append('status', 'pending_manual_review');
 
         const response = await fetch('/api/cases/submit', {
@@ -544,6 +574,16 @@ export default function IntakePage() {
               <>
                 <ReviewStep data={formData} onChange={updateFormData} errors={errors} />
 
+                {/* Insurance Savings Calculator */}
+                {formData.offenseCategory && basePrice > 0 && (
+                  <div className="mt-8">
+                    <InsuranceSavingsCalculator
+                      ticketType={formData.offenseCategory as 'minor' | 'standard' | 'major'}
+                      serviceFee={finalPrice}
+                    />
+                  </div>
+                )}
+
                 {/* Promo Code Section */}
                 {basePrice > 0 && (
                   <div className="mt-8 pt-8 border-t border-[#E5E5E5] space-y-4">
@@ -677,7 +717,7 @@ export default function IntakePage() {
                   )}
                 </div>
 
-                <PaymentForm
+                <StripePaymentForm
                   caseId={caseId}
                   amount={finalPrice}
                   customerEmail={formData.email}

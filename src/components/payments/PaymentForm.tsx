@@ -5,7 +5,7 @@ import { formatCurrency } from '@/lib/utils';
 
 interface PaymentFormProps {
   caseId: string;
-  amount: number; // in dollars
+  amount: number; // in cents (to match rest of codebase)
   customerEmail: string;
   onSuccess: () => void;
   onError: (error: string) => void;
@@ -171,14 +171,14 @@ export function PaymentForm({
         return;
       }
 
-      // Process charge
+      // Process charge (convert cents to dollars for API)
       const response = await fetch('/api/payments/charge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           caseId,
           tokenId: token.id,
-          amount,
+          amount: amount / 100, // Convert cents to dollars
         }),
       });
 
@@ -225,8 +225,8 @@ export function PaymentForm({
     setLoading(false);
   };
 
-  const isPayLaterAvailable = amount >= 150;
-  const monthlyPayment = Math.ceil(amount / 4);
+  const isPayLaterAvailable = amount >= 15000; // $150 minimum in cents
+  const monthlyPayment = Math.ceil(amount / 4); // Keep in cents for formatCurrency
 
   return (
     <div className="space-y-6">
