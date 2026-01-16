@@ -217,6 +217,26 @@ export function StripePaymentForm({
         </div>
       </div>
 
+      {/* Pay Over Time Badge */}
+      <div className="flex items-center gap-3 p-4 bg-[#FFD100]/10 border border-[#FFD100]/30 rounded-xl">
+        <div className="w-10 h-10 bg-[#FFD100] rounded-full flex items-center justify-center flex-shrink-0">
+          <svg className="w-5 h-5 text-[#1A1A1A]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div>
+          <p className="font-semibold text-[#1A1A1A] flex items-center gap-2">
+            Pay Over Time Available
+            <span className="text-xs bg-[#FFD100] text-[#1A1A1A] px-2 py-0.5 rounded-full font-bold">
+              0% APR
+            </span>
+          </p>
+          <p className="text-sm text-[#4A4A4A]">
+            Split into 4 interest-free payments with Klarna, Afterpay, or Zip
+          </p>
+        </div>
+      </div>
+
       <Elements
         stripe={stripePromise}
         options={{

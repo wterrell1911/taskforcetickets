@@ -22,12 +22,12 @@ export function Pricing() {
             <div
               key={tier.category}
               className={`rounded-2xl p-10 border-2 transition-all ${
-                index === 1
+                index === 0
                   ? 'border-[#FFD100] bg-[#FFD100]/5 scale-105 shadow-brand-lg'
                   : 'border-[#E5E5E5] bg-white hover:border-[#1A1A1A]/20'
               }`}
             >
-              {index === 1 && (
+              {index === 0 && (
                 <span className="inline-block bg-[#FFD100] text-[#1A1A1A] text-xs font-bold uppercase tracking-wider px-4 py-1.5 rounded-full mb-6">
                   Most Common
                 </span>
