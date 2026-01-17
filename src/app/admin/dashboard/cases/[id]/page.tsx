@@ -304,6 +304,7 @@ export default function CaseDetailPage() {
           violations: [],
           fineAmount: null,
           statuteNumbers: [],
+          isCameraTicket: false,
           confidence: caseData.ocr_confidence || 0,
           rawText: caseData.ocr_raw_text || '',
           extractionWarnings: caseData.ocr_extraction_warnings || [],

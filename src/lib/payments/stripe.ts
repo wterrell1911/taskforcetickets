@@ -13,7 +13,7 @@ function getStripe(): Stripe {
       throw new Error('STRIPE_SECRET_KEY is not configured');
     }
     stripeInstance = new Stripe(secretKey, {
-      apiVersion: '2025-01-27.acacia',
+      apiVersion: '2025-12-15.clover',
     });
   }
   return stripeInstance;

@@ -87,9 +87,10 @@ export function getStatusStages(finalStatus?: CaseStatus): CaseStatus[] {
  * Check if a status is a terminal/final status
  */
 export function isTerminalStatus(status: CaseStatus): boolean {
-  return [
+  const terminalStatuses: CaseStatus[] = [
     CASE_STATUSES.DISMISSED,
     CASE_STATUSES.NOT_DISMISSED,
     CASE_STATUSES.CLOSED,
-  ].includes(status);
+  ];
+  return terminalStatuses.includes(status);
 }
