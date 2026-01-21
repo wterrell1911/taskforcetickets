@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { IntakeFormData, FormStep } from '@/types';
 import { Logo } from '@/components/ui/Logo';
@@ -15,8 +16,20 @@ import { EligibilityRejection } from '@/components/forms/EligibilityRejection';
 import { ManualReviewNotice } from '@/components/forms/ManualReviewNotice';
 import { ManualEntryForm, ManualEntryData } from '@/components/forms/ManualEntryForm';
 // import { PaymentForm } from '@/components/payments/PaymentForm'; // LawPay - disabled
-import { StripePaymentForm } from '@/components/payments/StripePaymentForm';
 import { InsuranceSavingsCalculator } from '@/components/InsuranceSavingsCalculator';
+
+// Lazy load Stripe to improve initial page load
+const StripePaymentForm = dynamic(
+  () => import('@/components/payments/StripePaymentForm').then(mod => mod.StripePaymentForm),
+  {
+    loading: () => (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1A1A1A]"></div>
+      </div>
+    ),
+    ssr: false
+  }
+);
 import { getPriceForCategory, isDismissible, PRICING_TIERS } from '@/lib/pricing';
 import { isValidEmail, isValidPhone, isBeforeDeadline, formatCurrency } from '@/lib/utils';
 import { screenTicket, screenTicketWithDropdown, TicketScreeningResult } from '@/lib/eligibility/ticket-screener';

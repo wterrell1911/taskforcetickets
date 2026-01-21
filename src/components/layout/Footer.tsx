@@ -33,6 +33,16 @@ export function Footer() {
                   Submit a Ticket
                 </Link>
               </li>
+              <li>
+                <Link href="/traffic-report" className="text-white/70 hover:text-white transition-colors">
+                  Traffic Report
+                </Link>
+              </li>
+              <li>
+                <Link href="/201-poplar-guide" className="text-white/70 hover:text-white transition-colors">
+                  201 Poplar Guide
+                </Link>
+              </li>
             </ul>
           </div>
           <div>
