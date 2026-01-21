@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { syncMPDData } from '@/lib/socrata';
+import { getLatestSync } from '@/lib/db/enforcement-store';
+
+// Increase timeout for sync operations (requires Vercel Pro for >10s)
+export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,6 +17,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error) {
+    console.error('Sync error:', error);
     return NextResponse.json(
       {
         success: false,
@@ -24,11 +29,15 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
-  // Get sync status
-  const { getLatestSync } = await import('@/lib/db/store');
-  const latestSync = await getLatestSync('mpd');
-
-  return NextResponse.json({
-    lastSync: latestSync || null,
-  });
+  try {
+    const latestSync = await getLatestSync('mpd');
+    return NextResponse.json({
+      lastSync: latestSync || null,
+    });
+  } catch (error) {
+    return NextResponse.json({
+      lastSync: null,
+      error: error instanceof Error ? error.message : 'Failed to get sync status',
+    });
+  }
 }
