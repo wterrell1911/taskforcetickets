@@ -6,9 +6,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getEnforcementRecords } from '@/lib/db/store';
+import { getEnforcementRecords, EnforcementRecord } from '@/lib/db/enforcement-store';
 import { getAdminClient } from '@/lib/db/supabase';
-import { EnforcementRecord } from '@/types/admin';
 
 interface WeeklyStats {
   weekStart: string;

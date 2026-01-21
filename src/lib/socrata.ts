@@ -262,20 +262,26 @@ export async function syncMPDData(options: {
   endDate?: string;
   onProgress?: (message: string, count: number) => void;
 }): Promise<{ success: boolean; recordsProcessed: number; error?: string }> {
-  const { addEnforcementRecords, clearEnforcementRecords, createSyncLog, updateSyncLog } = await import('./db/store');
+  // Use Supabase-based store for production
+  const {
+    addEnforcementRecords,
+    clearEnforcementRecords,
+    createSyncLog,
+    updateSyncLog,
+  } = await import('./db/enforcement-store');
 
   const syncLog = await createSyncLog('mpd');
 
   try {
     options.onProgress?.('Starting MPD data sync...', 0);
 
-    // Default to last 2 years if no start date specified (full dataset is 700k+ records)
+    // Default to last 30 days if no start date specified
     let effectiveStartDate = options.startDate;
     if (!effectiveStartDate) {
-      const twoYearsAgo = new Date();
-      twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
-      effectiveStartDate = twoYearsAgo.toISOString().split('T')[0];
-      console.log(`[Sync] No start date specified, defaulting to last 2 years: ${effectiveStartDate}`);
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      effectiveStartDate = thirtyDaysAgo.toISOString().split('T')[0];
+      console.log(`[Sync] No start date specified, defaulting to last 30 days: ${effectiveStartDate}`);
     }
 
     // Clear existing MPD records before sync
@@ -292,16 +298,36 @@ export async function syncMPDData(options: {
     console.log(`[Sync] Fetched ${stops.length} records, transforming...`);
     options.onProgress?.('Transforming records...', stops.length);
 
-    // Transform in batches to avoid stack overflow
-    const BATCH_SIZE = 10000;
+    // Transform and store in batches
+    const BATCH_SIZE = 1000;
     let totalCount = 0;
 
     for (let i = 0; i < stops.length; i += BATCH_SIZE) {
       const batch = stops.slice(i, i + BATCH_SIZE);
-      const records = batch.map(stop => client.transformToEnforcementRecord(stop));
+      const records = batch.map(stop => {
+        const transformed = client.transformToEnforcementRecord(stop);
+        return {
+          source: transformed.source,
+          date: transformed.date,
+          time: transformed.time,
+          location: transformed.location,
+          lat: transformed.lat,
+          lng: transformed.lng,
+          violationType: transformed.violationType,
+          violationCategory: transformed.violationCategory,
+          agency: transformed.agency,
+          ward: transformed.ward,
+          precinct: transformed.precinct,
+          eventNumber: stop.Event_Number,
+          dispositionCode: stop.Disposition_Code,
+          zipCode: stop.ZIP_Code,
+          rawData: stop as Record<string, unknown>,
+        };
+      });
       const count = await addEnforcementRecords(records);
       totalCount += count;
       console.log(`[Sync] Stored batch ${Math.floor(i / BATCH_SIZE) + 1}, total: ${totalCount}`);
+      options.onProgress?.('Storing records...', totalCount);
     }
 
     await updateSyncLog(syncLog.id, {
