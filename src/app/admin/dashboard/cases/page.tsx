@@ -37,35 +37,38 @@ const statusColors: Record<CaseStatus, { bg: string; text: string }> = {
 export default function CasesPage() {
   const [cases, setCases] = useState<CaseSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<FilterStatus>('active'); // Default to active (excludes rejected)
+  const [statusFilter, setStatusFilter] = useState<FilterStatus>('active');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
-    async function fetchCases() {
-      try {
-        const params = new URLSearchParams();
-        if (statusFilter === 'active') {
-          params.set('excludeStatus', 'rejected');
-        } else if (statusFilter !== 'all') {
-          params.set('status', statusFilter);
-        }
-        if (searchQuery) params.set('search', searchQuery);
-
-        const response = await fetch(`/api/admin/cases?${params}`);
-        if (!response.ok) throw new Error('Failed to fetch cases');
-
-        const data = await response.json();
-        setCases(data.cases || []);
-      } catch (error) {
-        console.error('Error fetching cases:', error);
-        setCases([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-
     fetchCases();
   }, [statusFilter, searchQuery]);
+
+  async function fetchCases() {
+    try {
+      const params = new URLSearchParams();
+      if (statusFilter === 'active') {
+        params.set('excludeStatus', 'rejected');
+      } else if (statusFilter !== 'all') {
+        params.set('status', statusFilter);
+      }
+      if (searchQuery) params.set('search', searchQuery);
+
+      const response = await fetch(`/api/admin/cases?${params}`);
+      if (!response.ok) throw new Error('Failed to fetch cases');
+
+      const data = await response.json();
+      setCases(data.cases || []);
+      setSelectedIds(new Set()); // Clear selection on refresh
+    } catch (error) {
+      console.error('Error fetching cases:', error);
+      setCases([]);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   const filteredCases = cases.filter((c) => {
     let matchesStatus = false;
@@ -89,6 +92,70 @@ export default function CasesPage() {
   const lowConfidenceCount = cases.filter(
     (c) => c.hasOCRData && c.ocrConfidence !== null && c.ocrConfidence < 70
   ).length;
+
+  // Selection handlers
+  const toggleSelect = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredCases.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredCases.map((c) => c.id)));
+    }
+  };
+
+  // Bulk action handler
+  async function handleBulkAction(action: 'accepted' | 'rejected') {
+    if (selectedIds.size === 0) return;
+
+    const confirmMsg =
+      action === 'accepted'
+        ? `Accept ${selectedIds.size} case(s)?`
+        : `Reject ${selectedIds.size} case(s)? This will archive them.`;
+
+    if (!confirm(confirmMsg)) return;
+
+    setActionLoading(true);
+
+    try {
+      const results = await Promise.all(
+        Array.from(selectedIds).map(async (id) => {
+          const response = await fetch(`/api/admin/cases/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: action }),
+          });
+          return { id, success: response.ok };
+        })
+      );
+
+      const successCount = results.filter((r) => r.success).length;
+      const failCount = results.filter((r) => !r.success).length;
+
+      if (failCount > 0) {
+        alert(`${successCount} succeeded, ${failCount} failed`);
+      }
+
+      // Refresh cases
+      await fetchCases();
+    } catch (error) {
+      console.error('Bulk action error:', error);
+      alert('An error occurred');
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  const allSelected = filteredCases.length > 0 && selectedIds.size === filteredCases.length;
+  const someSelected = selectedIds.size > 0;
 
   return (
     <AdminLayout>
@@ -152,6 +219,35 @@ export default function CasesPage() {
           </div>
         </div>
 
+        {/* Bulk Action Bar */}
+        {someSelected && (
+          <div className="bg-[#1A1A1A] text-white rounded-xl p-4 flex items-center justify-between">
+            <span className="font-medium">{selectedIds.size} case(s) selected</span>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => handleBulkAction('accepted')}
+                disabled={actionLoading}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg font-medium disabled:opacity-50 transition-colors"
+              >
+                {actionLoading ? 'Processing...' : 'Accept Selected'}
+              </button>
+              <button
+                onClick={() => handleBulkAction('rejected')}
+                disabled={actionLoading}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg font-medium disabled:opacity-50 transition-colors"
+              >
+                {actionLoading ? 'Processing...' : 'Reject Selected'}
+              </button>
+              <button
+                onClick={() => setSelectedIds(new Set())}
+                className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg font-medium transition-colors"
+              >
+                Clear Selection
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Cases Table */}
         <div className="bg-white rounded-xl border border-[#E5E5E5] overflow-hidden">
           {loading ? (
@@ -170,65 +266,57 @@ export default function CasesPage() {
             <table className="w-full">
               <thead>
                 <tr className="bg-[#F8F8F8] border-b border-[#E5E5E5]">
-                  <th className="text-left px-6 py-3 text-sm font-semibold text-[#1A1A1A]">Client</th>
-                  <th className="text-left px-6 py-3 text-sm font-semibold text-[#1A1A1A]">Court Date</th>
-                  <th className="text-left px-6 py-3 text-sm font-semibold text-[#1A1A1A]">Offense</th>
-                  <th className="text-left px-6 py-3 text-sm font-semibold text-[#1A1A1A]">Price</th>
-                  <th className="text-left px-6 py-3 text-sm font-semibold text-[#1A1A1A]">OCR Status</th>
-                  <th className="text-left px-6 py-3 text-sm font-semibold text-[#1A1A1A]">Status</th>
-                  <th className="text-left px-6 py-3 text-sm font-semibold text-[#1A1A1A]">Actions</th>
+                  <th className="px-4 py-3 w-12">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={toggleSelectAll}
+                      className="w-4 h-4 rounded border-gray-300 text-[#FFD100] focus:ring-[#FFD100]"
+                    />
+                  </th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-[#1A1A1A]">Client</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-[#1A1A1A]">Court Date</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-[#1A1A1A]">Offense</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-[#1A1A1A]">Price</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-[#1A1A1A]">Status</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-[#1A1A1A]">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredCases.map((caseItem) => (
                   <tr
                     key={caseItem.id}
-                    className="border-b border-[#E5E5E5] hover:bg-[#F8F8F8] transition-colors"
+                    className={cn(
+                      'border-b border-[#E5E5E5] hover:bg-[#F8F8F8] transition-colors',
+                      selectedIds.has(caseItem.id) && 'bg-[#FFD100]/10'
+                    )}
                   >
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(caseItem.id)}
+                        onChange={() => toggleSelect(caseItem.id)}
+                        className="w-4 h-4 rounded border-gray-300 text-[#FFD100] focus:ring-[#FFD100]"
+                      />
+                    </td>
+                    <td className="px-4 py-4">
                       <div>
                         <p className="font-medium text-[#1A1A1A]">{caseItem.clientName}</p>
                         <p className="text-sm text-[#4A4A4A]">{caseItem.email}</p>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       <span className="text-[#1A1A1A]">
                         {new Date(caseItem.courtDate).toLocaleDateString()}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       <span className="capitalize text-[#1A1A1A]">{caseItem.offenseCategory}</span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       <span className="font-medium text-[#1A1A1A]">${caseItem.price}</span>
                     </td>
-                    <td className="px-6 py-4">
-                      {caseItem.hasOCRData ? (
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={cn(
-                              'w-2 h-2 rounded-full',
-                              caseItem.ocrConfidence && caseItem.ocrConfidence >= 70
-                                ? 'bg-emerald-500'
-                                : 'bg-[#FFD100]'
-                            )}
-                          />
-                          <span
-                            className={cn(
-                              'text-sm',
-                              caseItem.ocrConfidence && caseItem.ocrConfidence >= 70
-                                ? 'text-emerald-600'
-                                : 'text-[#1A1A1A]'
-                            )}
-                          >
-                            {caseItem.ocrConfidence}%
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-sm text-[#4A4A4A]">No OCR</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       <span
                         className={cn(
                           'px-2 py-1 rounded-full text-xs font-medium capitalize',
@@ -236,16 +324,52 @@ export default function CasesPage() {
                           statusColors[caseItem.status].text
                         )}
                       >
-                        {caseItem.status}
+                        {caseItem.status.replace('_', ' ')}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                      <Link
-                        href={`/admin/dashboard/cases/${caseItem.id}`}
-                        className="text-sm font-medium text-[#1A1A1A] hover:text-[#FFD100] transition-colors"
-                      >
-                        Review
-                      </Link>
+                    <td className="px-4 py-4">
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/admin/dashboard/cases/${caseItem.id}`}
+                          className="text-sm font-medium text-[#1A1A1A] hover:text-[#FFD100] transition-colors"
+                        >
+                          Review
+                        </Link>
+                        {(caseItem.status === 'pending' || caseItem.status === 'pending_review') && (
+                          <>
+                            <span className="text-[#E5E5E5]">|</span>
+                            <button
+                              onClick={async () => {
+                                if (!confirm(`Accept case for ${caseItem.clientName}?`)) return;
+                                await fetch(`/api/admin/cases/${caseItem.id}`, {
+                                  method: 'PATCH',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ status: 'accepted' }),
+                                });
+                                fetchCases();
+                              }}
+                              className="text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
+                            >
+                              Accept
+                            </button>
+                            <span className="text-[#E5E5E5]">|</span>
+                            <button
+                              onClick={async () => {
+                                if (!confirm(`Reject case for ${caseItem.clientName}?`)) return;
+                                await fetch(`/api/admin/cases/${caseItem.id}`, {
+                                  method: 'PATCH',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ status: 'rejected' }),
+                                });
+                                fetchCases();
+                              }}
+                              className="text-sm font-medium text-red-600 hover:text-red-700 transition-colors"
+                            >
+                              Reject
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
