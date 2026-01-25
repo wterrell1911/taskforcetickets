@@ -21,3 +21,4 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+// Force rebuild Sun Jan 25 18:10:09 UTC 2026
