@@ -97,14 +97,14 @@ export default async function TrafficReportPage() {
         <section className="bg-[#1A1A1A] text-white py-16">
           <div className="max-w-5xl mx-auto px-6">
             <div className="inline-block bg-[#FFD100]/10 border border-[#FFD100]/30 rounded-full px-4 py-1.5 mb-6">
-              <span className="text-[#FFD100] text-sm font-semibold tracking-wide">LIVE DATA · UPDATED REGULARLY</span>
+              <span className="text-[#FFD100] text-sm font-semibold tracking-wide">LIVE DATA · LAST 90 DAYS</span>
             </div>
             <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4 leading-tight">
               Memphis Traffic Stop{' '}
               <span className="text-[#FFD100]">Hotspot Map</span>
             </h1>
             <p className="text-xl text-gray-300 max-w-3xl leading-relaxed">
-              See where Memphis police issue the most traffic citations. Real data from {data.totalStops?.toLocaleString() || '733,000'}+ recorded traffic stops.
+              See where Memphis police issue the most traffic citations. Real data from {data.totalStops?.toLocaleString() || '60,000'}+ traffic stops in the last 90 days.
             </p>
           </div>
         </section>
@@ -113,8 +113,8 @@ export default async function TrafficReportPage() {
         <section className="bg-[#FFD100] py-5">
           <div className="max-w-5xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-[#1A1A1A]">
             <div className="flex items-center gap-2">
-              <span className="text-2xl font-extrabold">{data.totalStops?.toLocaleString() || '733,000'}+</span>
-              <span className="text-sm font-medium">Total Traffic<br />Stops Recorded</span>
+              <span className="text-2xl font-extrabold">{data.totalStops?.toLocaleString() || '60,000'}+</span>
+              <span className="text-sm font-medium">Traffic Stops<br />Last 90 Days</span>
             </div>
             <div className="hidden md:block w-px h-8 bg-[#1A1A1A]/20" />
             <div className="flex items-center gap-2">

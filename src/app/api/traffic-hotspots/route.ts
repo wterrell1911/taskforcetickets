@@ -31,17 +31,26 @@ const ZIP_INFO: Record<string, { lat: number; lng: number; name: string }> = {
 /**
  * GET /api/traffic-hotspots
  * Public API — returns aggregated traffic stop data for map
+ * Limited to ~last 90 days of data (most recent 60K records) for representative sampling
  */
 export async function GET() {
   try {
-    // Query ArcGIS for ZIP code stats
-    const statsUrl = `${ARCGIS_BASE}/query?f=json&where=ZIP_Code IS NOT NULL&groupByFieldsForStatistics=ZIP_Code&outStatistics=${encodeURIComponent(JSON.stringify([{"statisticType":"count","onStatisticField":"OBJECTID","outStatisticFieldName":"stop_count"}]))}&orderByFields=stop_count DESC&resultRecordCount=30`;
+    // First get max OBJECTID to calculate 90-day window
+    const maxIdUrl = `${ARCGIS_BASE}/query?f=json&where=1=1&outStatistics=${encodeURIComponent(JSON.stringify([{"statisticType":"max","onStatisticField":"OBJECTID","outStatisticFieldName":"max_id"}]))}`;
+    const maxIdRes = await fetch(maxIdUrl).then(r => r.json());
+    const maxId = maxIdRes.features?.[0]?.attributes?.max_id || 733136;
+    // ~60K records ≈ 90 days based on ~20K stops/month
+    const recentThreshold = maxId - 60000;
+    const recentFilter = `OBJECTID > ${recentThreshold}`;
 
-    // Query ArcGIS for precinct stats
-    const precinctUrl = `${ARCGIS_BASE}/query?f=json&where=MPD_Precinct IS NOT NULL&groupByFieldsForStatistics=MPD_Precinct&outStatistics=${encodeURIComponent(JSON.stringify([{"statisticType":"count","onStatisticField":"OBJECTID","outStatisticFieldName":"stop_count"}]))}&orderByFields=stop_count DESC`;
+    // Query ArcGIS for ZIP code stats (last 90 days only)
+    const statsUrl = `${ARCGIS_BASE}/query?f=json&where=${encodeURIComponent(`${recentFilter} AND ZIP_Code IS NOT NULL`)}&groupByFieldsForStatistics=ZIP_Code&outStatistics=${encodeURIComponent(JSON.stringify([{"statisticType":"count","onStatisticField":"OBJECTID","outStatisticFieldName":"stop_count"}]))}&orderByFields=stop_count DESC&resultRecordCount=30`;
 
-    // Query total count
-    const countUrl = `${ARCGIS_BASE}/query?f=json&where=1=1&returnCountOnly=true`;
+    // Query ArcGIS for precinct stats (last 90 days only)
+    const precinctUrl = `${ARCGIS_BASE}/query?f=json&where=${encodeURIComponent(`${recentFilter} AND MPD_Precinct IS NOT NULL`)}&groupByFieldsForStatistics=MPD_Precinct&outStatistics=${encodeURIComponent(JSON.stringify([{"statisticType":"count","onStatisticField":"OBJECTID","outStatisticFieldName":"stop_count"}]))}&orderByFields=stop_count DESC`;
+
+    // Query recent count
+    const countUrl = `${ARCGIS_BASE}/query?f=json&where=${encodeURIComponent(recentFilter)}&returnCountOnly=true`;
 
     const [zipRes, precinctRes, countRes] = await Promise.all([
       fetch(statsUrl).then(r => r.json()),
