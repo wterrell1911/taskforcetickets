@@ -33,6 +33,12 @@ export function Header() {
             Hotspot Map
           </Link>
           <Link
+            href="/blog"
+            className="text-[#4A4A4A] hover:text-[#1A1A1A] transition-colors font-medium"
+          >
+            Blog
+          </Link>
+          <Link
             href="/intake"
             className="bg-[#FFD100] text-[#1A1A1A] px-6 py-3 rounded-lg hover:brightness-105 transition-all font-semibold"
           >
@@ -79,6 +85,13 @@ export function Header() {
             onClick={() => setMobileMenuOpen(false)}
           >
             Hotspot Map
+          </Link>
+          <Link
+            href="/blog"
+            className="block text-[#4A4A4A] hover:text-[#1A1A1A] transition-colors font-medium py-2"
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Blog
           </Link>
           <Link
             href="/intake"

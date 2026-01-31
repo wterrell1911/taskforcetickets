@@ -48,6 +48,11 @@ export function Footer() {
                   201 Poplar Guide
                 </Link>
               </li>
+              <li>
+                <Link href="/blog" className="text-white/70 hover:text-white transition-colors">
+                  Blog
+                </Link>
+              </li>
             </ul>
           </div>
           <div>
