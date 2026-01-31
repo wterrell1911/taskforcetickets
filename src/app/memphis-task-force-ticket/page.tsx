@@ -79,7 +79,7 @@ const faqJsonLd = {
       name: 'How much does it cost to fight a Task Force ticket?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'TaskForce Tickets charges a flat fee starting at $100 for minor violations, $200 for standard violations, and $500 for major violations. Court costs (approximately $130) are separate and paid directly to the court.',
+        text: 'TaskForce Tickets charges a flat fee starting at $100 for minor violations, $200 for standard violations, and $500 for major violations. Court costs (typically around $130) are separate and paid directly to the court.',
       },
     },
     {
@@ -250,27 +250,27 @@ export default function MemphisTaskForceTicketPage() {
               {[
                 {
                   title: 'Failure to Appear (FTA)',
-                  desc: 'A warrant is issued for your arrest. You can be picked up during any future traffic stop.',
+                  desc: 'A bench warrant could be issued for your arrest. If stopped again, you risk being taken into custody.',
                   icon: '⚠️',
                 },
                 {
                   title: 'License Suspension',
-                  desc: 'Tennessee will suspend your driver\'s license for failure to appear or unpaid fines.',
+                  desc: 'Tennessee may suspend your driver\'s license for failure to appear or unpaid fines — this is especially common in smaller counties.',
                   icon: '🚫',
                 },
                 {
                   title: 'Additional Fines',
-                  desc: 'Late fees and court costs pile up. A $50 ticket becomes $300+ with FTA fees.',
+                  desc: 'Late fees and court costs can pile up. A $50 ticket could become $300+ with FTA fees.',
                   icon: '💸',
                 },
                 {
                   title: 'Insurance Rate Increase',
-                  desc: 'Points on your record from a conviction can increase your insurance by $500-$1,500+ over 3 years.',
+                  desc: 'Points on your record from a conviction could increase your insurance by $500-$1,500+ over 3 years.',
                   icon: '📈',
                 },
                 {
                   title: 'Permanent Record',
-                  desc: 'A conviction stays on your Tennessee driving record and is visible to insurance companies.',
+                  desc: 'A conviction could remain on your Tennessee driving record and be visible to insurance companies.',
                   icon: '📋',
                 },
               ].map(({ title, desc, icon }) => (
@@ -337,9 +337,9 @@ export default function MemphisTaskForceTicketPage() {
               </div>
               <ul className="space-y-2 text-[#4A4A4A] ml-14">
                 <li>Paying = guilty plea = conviction on your record</li>
-                <li>Points added to your license</li>
-                <li>Insurance rates increase for 3-5 years</li>
-                <li>A &quot;minor&quot; $50 ticket can cost $1,500+ in insurance hikes</li>
+                <li>Points could be added to your license</li>
+                <li>Insurance rates may increase for 3-5 years</li>
+                <li>A &quot;minor&quot; $50 ticket could end up costing $1,500+ in insurance hikes</li>
                 <li>Future tickets stack — more points, higher risk of suspension</li>
               </ul>
             </div>
@@ -415,7 +415,7 @@ export default function MemphisTaskForceTicketPage() {
                     <span className="font-bold text-[#1A1A1A]">~$130</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-[#4A4A4A]">Insurance increase (3 yrs)</span>
+                    <span className="text-[#4A4A4A]">Potential insurance increase (3 yrs)</span>
                     <span className="font-bold text-red-600">$1,000–$1,500+</span>
                   </div>
                   <div className="flex justify-between">
@@ -540,7 +540,7 @@ export default function MemphisTaskForceTicketPage() {
                 },
                 {
                   q: 'What if I already missed my court date?',
-                  a: 'If you\'ve missed your court date, a Failure to Appear (FTA) warrant may have been issued. It\'s important to act quickly. Upload your ticket and we\'ll advise you on your options — we handle FTA cases regularly.',
+                  a: 'If you\'ve missed your court date, a Failure to Appear (FTA) warrant could have been issued and your license may be at risk. The sooner you act, the better your options. Upload your ticket and we\'ll advise you — we handle FTA cases regularly.',
                 },
                 {
                   q: 'How long does it take to resolve my ticket?',
