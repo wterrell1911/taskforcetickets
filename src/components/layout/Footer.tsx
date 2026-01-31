@@ -34,8 +34,13 @@ export function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/memphis-task-force-ticket" className="text-white/70 hover:text-white transition-colors">
+                  Task Force Tickets
+                </Link>
+              </li>
+              <li>
                 <Link href="/traffic-report" className="text-white/70 hover:text-white transition-colors">
-                  Traffic Report
+                  Traffic Hotspot Map
                 </Link>
               </li>
               <li>

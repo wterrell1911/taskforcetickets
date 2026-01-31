@@ -27,6 +27,12 @@ export function Header() {
             Pricing
           </Link>
           <Link
+            href="/traffic-report"
+            className="text-[#4A4A4A] hover:text-[#1A1A1A] transition-colors font-medium"
+          >
+            Hotspot Map
+          </Link>
+          <Link
             href="/intake"
             className="bg-[#FFD100] text-[#1A1A1A] px-6 py-3 rounded-lg hover:brightness-105 transition-all font-semibold"
           >
@@ -66,6 +72,13 @@ export function Header() {
             onClick={() => setMobileMenuOpen(false)}
           >
             Pricing
+          </Link>
+          <Link
+            href="/traffic-report"
+            className="block text-[#4A4A4A] hover:text-[#1A1A1A] transition-colors font-medium py-2"
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Hotspot Map
           </Link>
           <Link
             href="/intake"
