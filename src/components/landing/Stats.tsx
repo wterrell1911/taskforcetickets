@@ -2,9 +2,9 @@
 
 const stats = [
   {
-    value: '95%',
-    label: 'Dismissal Rate',
-    description: 'Of eligible tickets dismissed',
+    value: '$100',
+    label: 'Flat Fee',
+    description: 'Starting price, no hidden costs',
   },
   {
     value: '$1,530',
