@@ -14,12 +14,19 @@ export const metadata: Metadata = {
   description:
     'Get your Memphis & Shelby County traffic ticket dismissed. Upload your citation, pay a flat fee, and let our experienced attorneys handle everything. Money-back guarantee.',
   keywords: [
+    'memphis task force ticket',
     'traffic ticket lawyer Memphis',
     'Shelby County traffic ticket',
     'dismiss traffic ticket Tennessee',
     'Memphis speeding ticket attorney',
     'traffic defense Memphis',
+    'memphis traffic ticket',
+    'fight traffic ticket memphis',
+    'traffic court memphis 201 poplar',
   ],
+  verification: {
+    google: 'google96f9008c159da05b',
+  },
   openGraph: {
     title: 'TaskForce Tickets | Memphis Traffic Defense',
     description: 'Get your traffic ticket dismissed. Flat fee. Money-back guarantee.',
