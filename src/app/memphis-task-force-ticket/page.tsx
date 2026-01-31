@@ -179,9 +179,6 @@ export default function MemphisTaskForceTicketPage() {
                   'Memphis Police Department (MPD)',
                   'Shelby County Sheriff\'s Office (SCSO)',
                   'Tennessee Highway Patrol (THP)',
-                  'Germantown Police Department',
-                  'Bartlett Police Department',
-                  'Collierville Police Department',
                 ].map((agency) => (
                   <li key={agency} className="flex items-start gap-3">
                     <span className="mt-1 w-2 h-2 rounded-full bg-[#FFD100] flex-shrink-0" />
