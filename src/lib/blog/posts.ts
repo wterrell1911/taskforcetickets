@@ -703,6 +703,129 @@ TaskForce Tickets specializes in exactly these cases. [Submit your ticket](/inta
 *This article is for informational purposes only and does not constitute legal advice. Laws and procedures may change. If you believe your rights were violated during a traffic stop, consult with a licensed attorney who can evaluate your specific situation.*
     `,
   },
+  {
+    slug: 'tennessee-points-system-explained',
+    title: 'Tennessee Points System Explained (2026 Guide)',
+    date: '2026-02-10',
+    excerpt:
+      'Learn how Tennessee tracks your driving record, what each violation costs in points, and how to avoid license suspension. Complete guide to the TN Driver Improvement Program.',
+    keywords: [
+      'tennessee points system',
+      'tn driver improvement program',
+      'tennessee license suspension points',
+      'how many points suspend license tennessee',
+      'tennessee speeding ticket points',
+      'tn dmv points',
+    ],
+    ogTitle: 'Tennessee Points System Explained (2026 Guide)',
+    ogDescription:
+      'Complete guide to Tennessee driver improvement points. Learn what violations cost, when your license gets suspended, and how to protect your driving record.',
+    content: `
+## Tennessee Points System Explained
+
+Your driving record follows you everywhere in Tennessee. Every time you get a ticket, points get added to your license. Rack up too many points, and you could lose your license.
+
+Here's how the system works and what you need to know to keep your record clean.
+
+## How Tennessee Tracks Your Driving Record
+
+Tennessee uses something called the Driver Improvement Program (DIP). Think of it like a scorecard for your driving. Every traffic violation adds points to your record. The state uses this to spot risky drivers.
+
+The Tennessee Department of Safety and Homeland Security manages the whole system. They track every conviction from traffic court and add the points to your license.
+
+## What Each Violation Is Worth
+
+Not all tickets are equal. A minor speeding ticket adds fewer points than reckless driving. Here's the breakdown:
+
+**Speeding tickets** depend on how fast you were going:
+- 1 to 5 mph over the limit: 1 point
+- 6 to 15 mph over: 3 points
+- 16 to 25 mph over: 4 points
+- 26 to 35 mph over: 5 points
+- 36 to 45 mph over: 6 points
+- 46+ mph over: 8 points
+
+**Common violations:**
+- Failure to signal: 3 points
+- Driving too fast for conditions: 3 points
+- Improper passing: 4 points
+- Running a red light: 4 points
+- Leaving an accident scene: 5 points
+- Reckless driving: 6 points
+- Passing a school bus: 8 points
+- Driving with a suspended license: 8 points
+
+The worst violations can add 8 points in one shot. That's two-thirds of the way to a suspension if you're an adult driver.
+
+**Note:** Red light camera tickets in Tennessee typically don't add points to your license. Only citations issued by a police officer in person count toward your point total.
+
+## When Your License Gets Suspended
+
+Tennessee has different rules for young drivers and adults.
+
+**If you're under 18:** You can only get 6 points in a 12-month period before facing suspension. That could be just two medium-sized tickets.
+
+**If you're 18 or older:** The state sends you a warning letter when you hit 6 to 11 points in 12 months. At 12 points or more, you get a notice of proposed suspension.
+
+The 12-month window is a rolling period. It's not based on the calendar year. The state looks back at the past 12 months from today.
+
+## How Long Points Stay on Your Record
+
+Points stick around for 2 years from your conviction date. Not from when you got pulled over, but from when the court finalizes the conviction.
+
+After 2 years, the points drop off. But the conviction itself stays on your driving record for longer. Insurance companies can still see it.
+
+## Your Options to Avoid Suspension
+
+If you hit 12 points, Tennessee gives you two choices:
+
+**Option 1:** Request an administrative hearing. You can argue your case and potentially avoid suspension.
+
+**Option 2:** Complete a defensive driving course within 90 days of conviction. This removes up to 5 points from your record.
+
+But here's the catch: You can only use the defensive driving option once every 4 years per [Tenn. Code § 55-8-207](https://law.justia.com/codes/tennessee/title-55/chapter-8/part-2/section-55-8-207/). Use it wisely.
+
+If you skip both options, your license gets suspended. The length depends on your total points and history.
+
+## CDL Holders Have It Worse
+
+Commercial drivers face tougher rules. Some violations that give regular drivers 3 or 4 points give CDL holders 6 or 7 points instead.
+
+Speeding in a commercial vehicle: 6 points (versus 1-8 for regular vehicles depending on speed). Making an improper turn in a commercial vehicle: 5 points.
+
+CDL holders also face federal rules on top of state points. Your employer cares about every ticket, even if it doesn't suspend your license.
+
+## Why This Matters
+
+Points aren't just about suspension. They affect your insurance rates. More points usually mean higher premiums. Some insurance companies drop drivers who rack up too many violations.
+
+If you drive for work, points can cost you your job. Even if you're under the suspension limit, employers often have their own stricter rules.
+
+## What to Do If You Get a Ticket
+
+You have options. Paying the ticket means accepting the points. Fighting it in court might get the charge reduced or dismissed.
+
+For serious violations or if you're close to suspension, talk to a traffic attorney. The cost of a lawyer is often less than what you'll pay in higher insurance rates and lost driving privileges.
+
+Keep track of your own points. Tennessee doesn't send reminders until you're already in trouble. You can request your driving record from the Department of Safety.
+
+## The Bottom Line
+
+The Tennessee points system is simple math. Stay under 12 points in 12 months, and you keep your license. Go over, and you're looking at suspension or mandatory classes.
+
+Most tickets add 3 to 6 points. That gives you room for one or two mistakes. But stack up three or four violations in a year, and you're in trouble.
+
+Drive carefully. Know what's on your record. And if you do get a ticket, understand what it's really going to cost you before you just pay it.
+
+---
+
+**Need help with a Tennessee traffic ticket?** We help drivers fight tickets and keep points off their record. [Contact TaskForce Tickets](https://taskforcetickets.com/intake) to see if we can help with your case.
+
+---
+
+*Sources: [Tennessee Code § 55-8-207](https://law.justia.com/codes/tennessee/title-55/chapter-8/part-2/section-55-8-207/), [Tennessee Department of Safety](https://www.tn.gov/safety/driver-services/reinstatements-and-moving-violations/driver-improvement-points-accumulation.html), [Tennessee DMV Point System](https://www.dmv.org/tn-tennessee/point-system.php)*
+    `,
+  },
 ];
 
 export function getAllPosts(): BlogPost[] {
