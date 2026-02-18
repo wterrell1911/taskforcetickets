@@ -177,7 +177,7 @@ SEO isn't dead. But it's not enough anymore. The path forward is both — and th
     ],
     ogTitle: 'How to Fight a Speeding Ticket in Memphis (2026 Guide)',
     ogDescription:
-      'Learn how to fight a speeding ticket in Memphis. Understand TN\\'s point system, your three options, and when hiring an attorney makes sense.',
+      'Learn how to fight a speeding ticket in Memphis. Understand TN\'s point system, your three options, and when hiring an attorney makes sense.',
     content: `
 ## You Just Got a Speeding Ticket in Memphis — Now What?
 
