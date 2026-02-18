@@ -164,7 +164,7 @@ SEO isn't dead. But it's not enough anymore. The path forward is both — and th
     title: 'How to Fight a Speeding Ticket in Memphis (2026 Guide)',
     date: '2026-02-16',
     excerpt:
-      'Got a speeding ticket in Memphis? Learn your three options, understand Tennessee\\'s point system, and see when fighting your ticket makes sense.',
+      'Got a speeding ticket in Memphis? Learn your three options, understand Tennessee\'s point system, and see when fighting your ticket makes sense.',
     keywords: [
       'fight speeding ticket memphis',
       'memphis speeding ticket',
