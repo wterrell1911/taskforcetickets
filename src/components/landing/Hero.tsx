@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { PhoneNumber } from '@/components/ui/PhoneNumber';
 
 export function Hero() {
   return (
@@ -24,7 +25,7 @@ export function Hero() {
           </p>
 
           {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 mb-8">
+          <div className="flex flex-col sm:flex-row gap-4 mb-4">
             <Link
               href="/intake"
               className="inline-flex items-center justify-center bg-[#FFD100] text-[#1A1A1A] px-10 py-5 rounded-xl text-lg font-semibold hover:brightness-105 transition-all"
@@ -40,6 +41,12 @@ export function Hero() {
             >
               Learn More
             </Link>
+          </div>
+
+          {/* Phone CTA */}
+          <div className="mb-8">
+            <span className="text-[#4A4A4A] text-sm">or call </span>
+            <PhoneNumber variant="hero" showIcon={false} />
           </div>
 
           {/* Trust indicators */}

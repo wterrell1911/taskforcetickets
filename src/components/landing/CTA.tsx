@@ -1,13 +1,14 @@
 import Link from 'next/link';
+import { PhoneNumber } from '@/components/ui/PhoneNumber';
 
 export function CTA() {
   return (
-    <section className="py-28 bg-white">
+    <section className="py-28 bg-[#1A1A1A]">
       <div className="max-w-4xl mx-auto px-6 text-center">
-        <h2 className="text-4xl md:text-5xl font-extrabold text-[#1A1A1A] mb-8 tracking-tight">
+        <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-8 tracking-tight">
           Ready to Get Your Ticket Dismissed?
         </h2>
-        <p className="text-xl text-[#4A4A4A] mb-12 max-w-2xl mx-auto leading-relaxed">
+        <p className="text-xl text-white/70 mb-12 max-w-2xl mx-auto leading-relaxed">
           Submit your ticket today and let us handle the rest. Most cases are resolved
           without any court appearance required.
         </p>
@@ -25,7 +26,11 @@ export function CTA() {
             />
           </svg>
         </Link>
-        <p className="text-[#4A4A4A]/60 mt-8 text-sm">
+        <div className="mt-6">
+          <span className="text-white/60 text-lg">Prefer to talk? Call us: </span>
+          <PhoneNumber variant="cta" showIcon={false} />
+        </div>
+        <p className="text-white/40 mt-8 text-sm">
           Must submit at least 3 business days before your court date
         </p>
       </div>

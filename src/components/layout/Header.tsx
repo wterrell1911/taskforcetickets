@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { Logo } from '@/components/ui/Logo';
+import { PhoneNumber } from '@/components/ui/PhoneNumber';
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -13,7 +14,7 @@ export function Header() {
         <Logo size="sm" showTagline={false} />
 
         {/* Desktop Nav */}
-        <div className="hidden md:flex items-center gap-10">
+        <div className="hidden md:flex items-center gap-8">
           <Link
             href="#how-it-works"
             className="text-[#4A4A4A] hover:text-[#1A1A1A] transition-colors font-medium"
@@ -38,6 +39,7 @@ export function Header() {
           >
             Blog
           </Link>
+          <PhoneNumber variant="header" />
           <Link
             href="/intake"
             className="bg-[#FFD100] text-[#1A1A1A] px-6 py-3 rounded-lg hover:brightness-105 transition-all font-semibold"
@@ -93,6 +95,9 @@ export function Header() {
           >
             Blog
           </Link>
+          <div className="py-2">
+            <PhoneNumber variant="header" />
+          </div>
           <Link
             href="/intake"
             className="block bg-[#FFD100] text-[#1A1A1A] px-6 py-3 rounded-lg text-center font-semibold"

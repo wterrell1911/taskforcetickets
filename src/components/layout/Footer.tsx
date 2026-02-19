@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Logo } from '@/components/ui/Logo';
+import { PhoneNumber } from '@/components/ui/PhoneNumber';
 
 export function Footer() {
   return (
@@ -12,6 +13,9 @@ export function Footer() {
               Professional traffic ticket resolution services for Memphis and Shelby County.
               We handle your citation so you can focus on what matters.
             </p>
+            <div className="mt-4">
+              <PhoneNumber variant="footer" />
+            </div>
           </div>
           <div>
             <h4 className="font-semibold mb-6 text-sm tracking-wide uppercase text-white/40">

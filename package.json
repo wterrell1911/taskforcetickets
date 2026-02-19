@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.77.0",
     "@react-email/components": "^1.0.3",
     "@stripe/react-stripe-js": "^5.4.1",
     "@stripe/stripe-js": "^8.6.1",
@@ -16,7 +17,10 @@
     "@vis.gl/react-google-maps": "^1.7.1",
     "clsx": "^2.1.1",
     "csv-parse": "^6.1.0",
+    "googleapis": "^171.4.0",
+    "leaflet": "^1.9.4",
     "next": "16.1.1",
+    "openai": "^6.22.0",
     "puppeteer": "^24.34.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -24,17 +28,17 @@
     "resend": "^6.6.0",
     "stripe": "^20.1.2",
     "tesseract.js": "^7.0.0",
-    "leaflet": "^1.9.4"
+    "twilio": "^5.12.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/leaflet": "^1.9.8",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
     "tailwindcss": "^4",
-    "typescript": "^5",
-    "@types/leaflet": "^1.9.8"
+    "typescript": "^5"
   }
 }
