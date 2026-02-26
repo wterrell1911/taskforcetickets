@@ -13,38 +13,43 @@ export function Pricing() {
             Simple, Flat-Fee Pricing
           </h2>
           <p className="text-xl text-[#4A4A4A] max-w-2xl mx-auto">
-            Three tiers. No surprises. Know your cost upfront.
+            Four tiers. No surprises. Know your cost upfront.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8 mb-16">
-          {dismissibleTiers.map((tier, index) => (
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+          {dismissibleTiers.map((tier) => (
             <div
               key={tier.category}
-              className={`rounded-2xl p-10 border-2 transition-all ${
-                index === 0
-                  ? 'border-[#FFD100] bg-[#FFD100]/5 scale-105 shadow-brand-lg'
+              className={`rounded-2xl p-8 border-2 transition-all ${
+                tier.category === 'minor'
+                  ? 'border-[#FFD100] bg-[#FFD100]/5 shadow-brand-lg'
                   : 'border-[#E5E5E5] bg-white hover:border-[#1A1A1A]/20'
               }`}
             >
-              {index === 0 && (
+              {tier.category === 'minor' && (
                 <span className="inline-block bg-[#FFD100] text-[#1A1A1A] text-xs font-bold uppercase tracking-wider px-4 py-1.5 rounded-full mb-6">
                   Most Common
                 </span>
               )}
               <div className="mb-6">
-                <span className="text-5xl font-extrabold text-[#1A1A1A]">
+                <span className="text-4xl font-extrabold text-[#1A1A1A]">
                   {formatCurrency(tier.price)}
                 </span>
               </div>
-              <h3 className="text-xl font-bold text-[#1A1A1A] mb-4">
+              <h3 className="text-lg font-bold text-[#1A1A1A] mb-3">
                 {tier.label}
               </h3>
-              <p className="text-[#4A4A4A] leading-relaxed mb-4">
+              <p className="text-[#4A4A4A] leading-relaxed mb-4 text-sm">
                 {tier.description}
               </p>
 
-              {/* Points info by tier */}
+              {/* Info by tier */}
+              {tier.category === 'paperwork' && (
+                <p className="text-sm text-[#4A4A4A] bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+                  <span className="text-blue-600 font-medium">No points added.</span> These don&apos;t affect your driving record but still mean fines and court dates.
+                </p>
+              )}
               {tier.category === 'minor' && (
                 <p className="text-sm text-[#4A4A4A] bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
                   <span className="text-emerald-600 font-medium">First offense under 10 MPH = 0 points.</span> But it&apos;s still on your record — a second ticket means points add up.

@@ -2,12 +2,21 @@ import { OffenseCategory, PricingTier } from '@/types';
 
 // All prices are stored in CENTS to match database schema
 export const PRICING_TIERS: PricingTier[] = [
-  // $100 Tier - Minor/Simple Violations
+  // $100 Tier - Paperwork Issues
+  {
+    category: 'paperwork',
+    label: 'Paperwork Issues',
+    description: 'Failure to show proof of insurance, expired registration, no license on person',
+    price: 10000, // $100.00 in cents
+    dismissible: true,
+    moneyBackGuarantee: true,
+  },
+  // $150 Tier - Minor/Simple Violations
   {
     category: 'minor',
     label: 'Minor Violation',
     description: 'Speeding under 15 mph over, seatbelt, expired tags, equipment violations',
-    price: 10000, // $100.00 in cents
+    price: 15000, // $150.00 in cents
     dismissible: true,
     moneyBackGuarantee: true,
   },

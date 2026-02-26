@@ -7,6 +7,7 @@ import type { CourtJurisdiction } from '@/lib/constants/jurisdictions';
 
 // Simplified offense categories - 3 pricing tiers
 export type OffenseCategory =
+  | 'paperwork'       // $100 - Failure to show insurance, registration, no license on person
   | 'minor'           // $150 - Under 15 over, seatbelt, expired tags, equipment
   | 'standard'        // $200 - 15-29 over, no insurance proof, expired license
   | 'major'           // $500 - 30+ over, reckless, serious moving violations
