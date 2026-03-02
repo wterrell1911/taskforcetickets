@@ -4,10 +4,12 @@ import { getGA4Metrics } from '@/lib/analytics/ga4';
 import { getSearchConsoleMetrics } from '@/lib/analytics/search-console';
 import { getCallRailMetrics } from '@/lib/analytics/callrail';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 function getDateRange(period: string): { startDate: string; endDate: string } {
   const end = new Date();
@@ -45,6 +47,7 @@ export async function GET(request: NextRequest) {
     // return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const supabase = getSupabase();
   const url = new URL(request.url);
   const period = url.searchParams.get('period') || '30d';
   const { startDate, endDate } = getDateRange(period);

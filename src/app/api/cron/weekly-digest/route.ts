@@ -7,12 +7,16 @@ import { getGA4Metrics } from '@/lib/analytics/ga4';
 import { getSearchConsoleMetrics } from '@/lib/analytics/search-console';
 import { getCallRailMetrics } from '@/lib/analytics/callrail';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY);
+}
 
 function getWeekDates(): { thisWeekStart: string; thisWeekEnd: string; lastWeekStart: string; lastWeekEnd: string } {
   const now = new Date();
@@ -39,6 +43,7 @@ function calculateChange(current: number, previous: number): number {
 }
 
 async function getLeadCounts(startDate: string, endDate: string) {
+  const supabase = getSupabase();
   const { data, error } = await supabase
     .from('leads')
     .select('source_type, marketing_source')
@@ -104,7 +109,8 @@ export async function GET(request: NextRequest) {
   if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  
+
+  const resend = getResend();
   const { thisWeekStart, thisWeekEnd, lastWeekStart, lastWeekEnd } = getWeekDates();
   
   // Fetch all metrics in parallel

@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 interface NormalizedLead {
   id: string;
@@ -100,6 +102,8 @@ export async function POST(request: NextRequest) {
   if (webhookSecret && providedToken !== webhookSecret) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  const supabase = getSupabase();
   
   // Parse request
   const source = url.searchParams.get('source') || 'form';
