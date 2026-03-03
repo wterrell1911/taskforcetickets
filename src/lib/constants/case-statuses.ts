@@ -7,6 +7,9 @@
 export const CASE_STATUSES = {
   SUBMITTED: 'submitted',
   UNDER_REVIEW: 'under_review',
+  PENDING_UPGRADE: 'pending_upgrade',
+  NEEDS_INFO: 'needs_info',
+  REJECTED: 'rejected',
   ACCEPTED: 'accepted',
   COURT_SCHEDULED: 'court_scheduled',
   APPEARED: 'appeared',
@@ -30,6 +33,21 @@ export const STATUS_DISPLAY: Record<
     label: 'Under Review',
     description: 'Checking eligibility',
     color: 'yellow',
+  },
+  pending_upgrade: {
+    label: 'Payment Needed',
+    description: 'Tier upgrade required',
+    color: 'orange',
+  },
+  needs_info: {
+    label: 'Info Needed',
+    description: 'We need more information',
+    color: 'yellow',
+  },
+  rejected: {
+    label: 'Not Accepted',
+    description: 'Unable to take this case',
+    color: 'gray',
   },
   accepted: {
     label: 'Accepted',
@@ -90,6 +108,7 @@ export function isTerminalStatus(status: CaseStatus): boolean {
   const terminalStatuses: CaseStatus[] = [
     CASE_STATUSES.DISMISSED,
     CASE_STATUSES.NOT_DISMISSED,
+    CASE_STATUSES.REJECTED,
     CASE_STATUSES.CLOSED,
   ];
   return terminalStatuses.includes(status);

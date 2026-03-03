@@ -7,8 +7,11 @@ import {
   sendCaseDismissedEmail,
   sendCaseNotDismissedEmail,
   sendNeedsInfoEmail,
+  sendTierUpgradeEmail,
+  sendCaseRejectedEmail,
   logEmailSent,
 } from '@/lib/emails/send-email';
+import { sendSMS } from '@/lib/reviews/twilio';
 
 const AUTH_COOKIE_NAME = 'tft_admin_auth';
 
@@ -259,15 +262,109 @@ export async function PATCH(
       emailSent = notDismissedResult.success;
       break;
 
+    case 'tier_upgrade':
+      const currentTier = updateData.currentTier || 'Minor Violation';
+      const requiredTier = updateData.requiredTier || 'Standard Violation';
+      const currentAmount = updateData.currentAmount || caseData.amount_charged || 0;
+      const requiredAmount = updateData.requiredAmount || 0;
+      const differenceAmount = requiredAmount - currentAmount;
+      const upgradeDeadline = updateData.deadline || calculateDeadline(caseData.court_date);
+
+      updates = {
+        status: 'pending_upgrade',
+        tier_upgrade_requested_at: now,
+        current_tier: currentTier,
+        required_tier: requiredTier,
+        upgrade_amount: differenceAmount,
+        ...updateData,
+      };
+
+      // Send tier upgrade email
+      const tierUpgradeResult = await sendTierUpgradeEmail({
+        to: caseData.customer_email,
+        customerName: caseData.customer_name,
+        caseId: id.slice(0, 8).toUpperCase(),
+        citationNumber: caseData.citation_number || 'N/A',
+        courtDate: new Date(caseData.court_date).toLocaleDateString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        }),
+        currentTier,
+        requiredTier,
+        currentAmount,
+        requiredAmount,
+        differenceAmount,
+        deadline: upgradeDeadline,
+      });
+
+      await logEmailSent({
+        caseId: id,
+        emailType: 'tier_upgrade',
+        recipientEmail: caseData.customer_email,
+        subject: 'Action Required: Tier Upgrade Needed for Your Case',
+        resendMessageId: tierUpgradeResult.messageId,
+        status: tierUpgradeResult.success ? 'sent' : 'failed',
+        errorMessage: tierUpgradeResult.error,
+      });
+
+      // Send SMS notification
+      if (caseData.customer_phone) {
+        const firstName = caseData.customer_name.split(' ')[0];
+        await sendSMS(
+          caseData.customer_phone,
+          `Hi ${firstName}! Good news - TaskForce Tickets can help with your ticket. We just need a small payment adjustment ($${differenceAmount}). Check your email for details, or visit taskforcetickets.com/intake. Questions? Reply to this text.`
+        );
+      }
+
+      emailSent = tierUpgradeResult.success;
+      break;
+
     case 'reject':
-      const rejectionReason = updateData.rejectionReason || 'Case rejected';
+      const rejectionReason = updateData.rejectionReason || 'We are unable to take this case at this time.';
+      const refundAmount = updateData.refundAmount || caseData.amount_charged || 0;
+
       updates = {
         status: 'rejected',
+        rejected_at: now,
+        rejection_reason: rejectionReason,
+        refund_amount: refundAmount,
         internal_notes: caseData.internal_notes
           ? `${caseData.internal_notes}\n\n[${now}] REJECTED: ${rejectionReason}`
           : `[${now}] REJECTED: ${rejectionReason}`,
       };
-      // TODO: Send rejection email to client
+
+      // Send rejection email
+      const rejectResult = await sendCaseRejectedEmail({
+        to: caseData.customer_email,
+        customerName: caseData.customer_name,
+        caseId: id.slice(0, 8).toUpperCase(),
+        citationNumber: caseData.citation_number,
+        rejectionReason,
+        refundAmount: refundAmount > 0 ? refundAmount : undefined,
+      });
+
+      await logEmailSent({
+        caseId: id,
+        emailType: 'case_rejected',
+        recipientEmail: caseData.customer_email,
+        subject: 'Update on Your Traffic Ticket Submission - TaskForce Tickets',
+        resendMessageId: rejectResult.messageId,
+        status: rejectResult.success ? 'sent' : 'failed',
+        errorMessage: rejectResult.error,
+      });
+
+      // Send SMS notification
+      if (caseData.customer_phone) {
+        const firstName = caseData.customer_name.split(' ')[0];
+        await sendSMS(
+          caseData.customer_phone,
+          `Hi ${firstName}, we've sent you an important update about your traffic ticket submission. Please check your email from TaskForce Tickets. Questions? Reply to this text.`
+        );
+      }
+
+      emailSent = rejectResult.success;
       break;
 
     case 'update':

@@ -10,6 +10,8 @@ import { CaseDismissedEmail } from './templates/case-dismissed';
 import { CaseNotDismissedEmail } from './templates/case-not-dismissed';
 import { NeedsInfoEmail } from './templates/needs-info';
 import { RejectionCourtReminderEmail } from './templates/rejection-court-reminder';
+import { TierUpgradeEmail } from './templates/tier-upgrade-needed';
+import { CaseRejectedEmail } from './templates/case-rejected';
 import { generateICSFile } from '@/lib/calendar/generate-ics';
 import { getCourtInfo } from '@/lib/constants/court-addresses';
 import { getCalendarRecipients, areCalendarInvitesEnabled } from '@/lib/config/calendar-recipients';
@@ -47,7 +49,9 @@ export type EmailType =
   | 'case_dismissed'
   | 'case_not_dismissed'
   | 'rejection'
-  | 'rejection_court_reminder';
+  | 'rejection_court_reminder'
+  | 'tier_upgrade'
+  | 'case_rejected';
 
 /**
  * Result type for email sending
@@ -379,6 +383,104 @@ export async function sendRejectionCourtReminderEmail(params: {
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     console.error('Failed to send rejection court reminder email:', message);
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Send tier upgrade needed email
+ */
+export async function sendTierUpgradeEmail(params: {
+  to: string;
+  customerName: string;
+  caseId: string;
+  citationNumber: string;
+  courtDate: string;
+  currentTier: string;
+  requiredTier: string;
+  currentAmount: number;
+  requiredAmount: number;
+  differenceAmount: number;
+  deadline: string;
+}): Promise<SendEmailResult> {
+  try {
+    const html = await render(
+      TierUpgradeEmail({
+        customerName: params.customerName,
+        caseId: params.caseId,
+        citationNumber: params.citationNumber,
+        courtDate: params.courtDate,
+        currentTier: params.currentTier,
+        requiredTier: params.requiredTier,
+        currentAmount: params.currentAmount,
+        requiredAmount: params.requiredAmount,
+        differenceAmount: params.differenceAmount,
+        deadline: params.deadline,
+      })
+    );
+
+    const { data, error } = await getResendClient().emails.send({
+      from: getFromEmail(),
+      to: params.to,
+      replyTo: getReplyToEmail(),
+      subject: 'Action Required: Tier Upgrade Needed for Your Case',
+      html,
+    });
+
+    if (error) {
+      console.error('Failed to send tier upgrade email:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, messageId: data?.id };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Failed to send tier upgrade email:', message);
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Send case rejected email
+ */
+export async function sendCaseRejectedEmail(params: {
+  to: string;
+  customerName: string;
+  caseId: string;
+  citationNumber?: string;
+  rejectionReason: string;
+  refundAmount?: number;
+  refundNote?: string;
+}): Promise<SendEmailResult> {
+  try {
+    const html = await render(
+      CaseRejectedEmail({
+        customerName: params.customerName,
+        caseId: params.caseId,
+        citationNumber: params.citationNumber,
+        rejectionReason: params.rejectionReason,
+        refundAmount: params.refundAmount,
+        refundNote: params.refundNote,
+      })
+    );
+
+    const { data, error } = await getResendClient().emails.send({
+      from: getFromEmail(),
+      to: params.to,
+      replyTo: getReplyToEmail(),
+      subject: 'Update on Your Traffic Ticket Submission - TaskForce Tickets',
+      html,
+    });
+
+    if (error) {
+      console.error('Failed to send case rejected email:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, messageId: data?.id };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Failed to send case rejected email:', message);
     return { success: false, error: message };
   }
 }
