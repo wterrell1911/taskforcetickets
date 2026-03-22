@@ -22,3 +22,4 @@ const nextConfig: NextConfig = {
 
 export default nextConfig;
 // Force rebuild Sun Jan 25 18:10:09 UTC 2026
+// Trigger redeploy Sun Mar 22 16:56:16 CDT 2026

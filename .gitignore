@@ -42,3 +42,4 @@ next-env.d.ts
 
 # data files (large JSON from CSV imports)
 /data/
+.env*.local
