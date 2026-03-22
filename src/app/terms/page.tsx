@@ -23,7 +23,7 @@ export default function TermsPage() {
       {/* Content */}
       <main className="max-w-4xl mx-auto px-6 py-12">
         <h1 className="text-3xl font-bold text-[#1A1A1A] mb-2">Terms of Service</h1>
-        <p className="text-[#4A4A4A] mb-8">Effective Date: January 1, 2025 | Version 2025-01-01</p>
+        <p className="text-[#4A4A4A] mb-8">Effective Date: March 22, 2026 | Version 2026-03-22</p>
 
         <div className="prose prose-lg max-w-none text-[#1A1A1A]">
           {/* Agreement to Terms */}
@@ -68,9 +68,10 @@ export default function TermsPage() {
               the following offense categories:
             </p>
             <ul className="list-disc pl-6 text-[#4A4A4A] mb-4 space-y-2">
-              <li><strong>Minor Offenses ($100):</strong> Speed under 15 mph over limit, seatbelt violations, expired tags, minor equipment violations</li>
-              <li><strong>Standard Offenses ($200):</strong> Speed 15-29 mph over limit, failure to show proof of insurance, expired license</li>
-              <li><strong>Major Offenses ($300):</strong> Speed 30+ mph over limit, reckless driving, serious moving violations</li>
+              <li><strong>Paperwork Issues ($100):</strong> Failure to show proof of insurance, expired registration, no license on person. These don&apos;t affect your driving record but still require court appearances.</li>
+              <li><strong>Minor Violations ($150):</strong> Speeding under 15 mph over limit, seatbelt violations, expired tags, equipment violations. First offense under 10 MPH = 0 points, but still on your record.</li>
+              <li><strong>Standard Violations ($200):</strong> Speeding 15-29 mph over limit, no proof of insurance, expired license. 10+ MPH over adds points immediately.</li>
+              <li><strong>Major Violations ($500):</strong> Speeding 30+ mph over limit, reckless driving, other serious moving violations. High-point violations can lead to license suspension.</li>
             </ul>
             <p className="text-[#4A4A4A]">
               Certain offenses may require case-by-case evaluation and may not be eligible for flat-fee representation,
@@ -157,9 +158,10 @@ export default function TermsPage() {
               TaskForce Tickets offers flat-fee representation based on offense type:
             </p>
             <ul className="list-disc pl-6 text-[#4A4A4A] mb-4 space-y-2">
-              <li><strong>Minor Offenses:</strong> $100</li>
-              <li><strong>Standard Offenses:</strong> $200</li>
-              <li><strong>Major Offenses:</strong> $300</li>
+              <li><strong>Paperwork Issues:</strong> $100</li>
+              <li><strong>Minor Violations:</strong> $150</li>
+              <li><strong>Standard Violations:</strong> $200</li>
+              <li><strong>Major Violations:</strong> $500</li>
             </ul>
             <p className="text-[#4A4A4A] mb-4">
               <strong>What the Fee Covers:</strong> Your flat fee covers attorney review of your case,
