@@ -9,6 +9,7 @@ import {
   sendNeedsInfoEmail,
   logEmailSent,
 } from '@/lib/emails/send-email';
+import { sendCourtDateCalendarInvite } from '@/lib/calendar/send-invite';
 
 const AUTH_COOKIE_NAME = 'tft_admin_auth';
 
@@ -147,6 +148,17 @@ export async function PATCH(
         resendMessageId: acceptResult.messageId,
         status: acceptResult.success ? 'sent' : 'failed',
         errorMessage: acceptResult.error,
+      });
+
+      // Send calendar invite to team
+      await sendCourtDateCalendarInvite({
+        caseId: id.slice(0, 8).toUpperCase(),
+        customerName: caseData.customer_name,
+        citationNumber: caseData.citation_number || 'N/A',
+        courtDate: caseData.court_date,
+        courtTime: caseData.court_time,
+        courtLocation: caseData.court_location,
+        courtJurisdiction: caseData.court_jurisdiction,
       });
 
       emailSent = acceptResult.success;
