@@ -239,20 +239,45 @@ export interface EnforcementStats {
   };
 }
 
-export async function getEnforcementStats(source: string = 'mpd'): Promise<EnforcementStats> {
+/**
+ * Fetch all rows for a source, paginating past PostgREST's default 1000-row cap.
+ * Shape of each row matches `columns` passed in.
+ */
+export async function fetchAllEnforcementRecords<T>(
+  source: string,
+  columns: string,
+): Promise<T[]> {
   const supabase = getAdminClient();
+  const PAGE_SIZE = 1000;
+  const all: T[] = [];
+  let from = 0;
 
-  const { data, error } = await supabase
-    .from('enforcement_records')
-    .select('date, precinct, zip_code, disposition_code, raw_data, updated_at')
-    .eq('source', source);
+  while (true) {
+    const { data, error } = await supabase
+      .from('enforcement_records')
+      .select(columns)
+      .eq('source', source)
+      .range(from, from + PAGE_SIZE - 1);
 
-  if (error) {
-    console.error('[enforcement-stats] query failed:', error);
-    throw error;
+    if (error) throw error;
+    const batch = (data ?? []) as T[];
+    all.push(...batch);
+    if (batch.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
   }
 
-  const rows = data ?? [];
+  return all;
+}
+
+export async function getEnforcementStats(source: string = 'mpd'): Promise<EnforcementStats> {
+  const rows = await fetchAllEnforcementRecords<{
+    date: string | null;
+    precinct: string | null;
+    zip_code: string | null;
+    disposition_code: string | null;
+    raw_data: Record<string, unknown> | null;
+    updated_at: string | null;
+  }>(source, 'date, precinct, zip_code, disposition_code, raw_data, updated_at');
   const stats: EnforcementStats = {
     totalRecords: rows.length,
     lastUpdated: null,

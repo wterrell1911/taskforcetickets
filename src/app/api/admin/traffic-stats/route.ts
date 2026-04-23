@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getEnforcementStats } from '@/lib/db/enforcement-store';
 
+export const maxDuration = 60;
+
 /**
  * GET /api/admin/traffic-stats
  * Returns aggregated traffic stop statistics for dashboard.

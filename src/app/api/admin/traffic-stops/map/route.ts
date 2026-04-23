@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getEnforcementStats } from '@/lib/db/enforcement-store';
 
+export const maxDuration = 60;
+
 // Memphis ZIP code approximate coordinates
 const ZIP_COORDINATES: Record<string, { lat: number; lng: number }> = {
   '38002': { lat: 35.1645, lng: -89.7897 }, // Arlington

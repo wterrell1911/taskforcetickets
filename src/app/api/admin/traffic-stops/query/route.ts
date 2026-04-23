@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminClient } from '@/lib/db/supabase';
+import { fetchAllEnforcementRecords } from '@/lib/db/enforcement-store';
+
+export const maxDuration = 60;
 
 interface EnforcementRow {
   date: string;
@@ -97,21 +99,10 @@ export async function POST(request: NextRequest) {
       compareYears?: number[];
     } = body;
 
-    const supabase = getAdminClient();
-    const { data, error } = await supabase
-      .from('enforcement_records')
-      .select('date, time, precinct, zip_code, disposition_code, raw_data')
-      .eq('source', 'mpd');
-
-    if (error) {
-      console.error('[traffic-stops/query] fetch failed:', error);
-      return NextResponse.json(
-        { error: error.message || 'Query failed' },
-        { status: 500 },
-      );
-    }
-
-    const allRows = (data ?? []) as EnforcementRow[];
+    const allRows = await fetchAllEnforcementRecords<EnforcementRow>(
+      'mpd',
+      'date, time, precinct, zip_code, disposition_code, raw_data',
+    );
 
     // Apply filters (done in-memory after fetch — simpler than chaining conditional SQL)
     const filtered = allRows.filter((r) => {
