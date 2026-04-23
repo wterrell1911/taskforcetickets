@@ -220,6 +220,99 @@ export async function getLatestSync(source: string): Promise<SyncLog | null> {
 }
 
 /**
+ * Aggregate stats for the admin dashboard.
+ * Pulls all records for the source in one query and aggregates in-memory.
+ * For ~15k rows this is a few hundred ms; if the table grows past ~100k,
+ * switch to SQL GROUP BY via a Postgres RPC.
+ */
+export interface EnforcementStats {
+  totalRecords: number;
+  lastUpdated: string | null;
+  dateRange: { start: string | null; end: string | null };
+  stats: {
+    byPrecinct: Record<string, number>;
+    byZipCode: Record<string, number>;
+    byYear: Record<number, number>;
+    byMonth: Record<string, number>;
+    byDisposition: Record<string, number>;
+    byPlanningDistrict: Record<string, number>;
+  };
+}
+
+export async function getEnforcementStats(source: string = 'mpd'): Promise<EnforcementStats> {
+  const supabase = getAdminClient();
+
+  const { data, error } = await supabase
+    .from('enforcement_records')
+    .select('date, precinct, zip_code, disposition_code, raw_data, updated_at')
+    .eq('source', source);
+
+  if (error) {
+    console.error('[enforcement-stats] query failed:', error);
+    throw error;
+  }
+
+  const rows = data ?? [];
+  const stats: EnforcementStats = {
+    totalRecords: rows.length,
+    lastUpdated: null,
+    dateRange: { start: null, end: null },
+    stats: {
+      byPrecinct: {},
+      byZipCode: {},
+      byYear: {},
+      byMonth: {},
+      byDisposition: {},
+      byPlanningDistrict: {},
+    },
+  };
+
+  let latestUpdated: string | null = null;
+  let minDate: string | null = null;
+  let maxDate: string | null = null;
+
+  for (const r of rows) {
+    const precinct = r.precinct as string | null;
+    const zip = r.zip_code as string | null;
+    const disposition = r.disposition_code as string | null;
+    const date = r.date as string | null;
+    const rawData = (r.raw_data ?? {}) as Record<string, unknown>;
+    const updatedAt = r.updated_at as string | null;
+
+    if (precinct) stats.stats.byPrecinct[precinct] = (stats.stats.byPrecinct[precinct] || 0) + 1;
+    if (zip) stats.stats.byZipCode[zip] = (stats.stats.byZipCode[zip] || 0) + 1;
+    if (disposition) stats.stats.byDisposition[disposition] = (stats.stats.byDisposition[disposition] || 0) + 1;
+
+    // raw_data from sync uses "Planning_District"; from CSV import it uses "Planning District"
+    const planningDistrict =
+      (rawData.Planning_District as string | undefined) ??
+      (rawData['Planning District'] as string | undefined) ??
+      null;
+    if (planningDistrict) {
+      stats.stats.byPlanningDistrict[planningDistrict] =
+        (stats.stats.byPlanningDistrict[planningDistrict] || 0) + 1;
+    }
+
+    if (date) {
+      const year = parseInt(date.slice(0, 4), 10);
+      const month = date.slice(0, 7);
+      if (!isNaN(year)) stats.stats.byYear[year] = (stats.stats.byYear[year] || 0) + 1;
+      stats.stats.byMonth[month] = (stats.stats.byMonth[month] || 0) + 1;
+      if (!minDate || date < minDate) minDate = date;
+      if (!maxDate || date > maxDate) maxDate = date;
+    }
+
+    if (updatedAt && (!latestUpdated || updatedAt > latestUpdated)) {
+      latestUpdated = updatedAt;
+    }
+  }
+
+  stats.lastUpdated = latestUpdated;
+  stats.dateRange = { start: minDate, end: maxDate };
+  return stats;
+}
+
+/**
  * Get record count by date range
  */
 export async function getRecordCount(startDate?: string, endDate?: string): Promise<number> {

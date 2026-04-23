@@ -1,47 +1,82 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
-import path from 'path';
+import { getAdminClient } from '@/lib/db/supabase';
 
-interface TrafficStop {
-  objectId: number;
-  eventNumber: string;
-  reportedDatetime: string;
-  dispositionCode: string;
-  location: string;
-  latitude: number;
-  longitude: number;
-  zipCode: string;
-  planningDistrict: string;
-  mpdPrecinct: string;
-  mpdWard: number | null;
+interface EnforcementRow {
+  date: string;
+  time: string | null;
+  precinct: string | null;
+  zip_code: string | null;
+  disposition_code: string | null;
+  raw_data: Record<string, unknown> | null;
 }
 
-interface TrafficStopsDatabase {
-  stops: TrafficStop[];
-  lastUpdated: string;
-  totalRecords: number;
+function planningDistrictOf(rawData: Record<string, unknown> | null): string | null {
+  if (!rawData) return null;
+  return (
+    (rawData.Planning_District as string | undefined) ??
+    (rawData['Planning District'] as string | undefined) ??
+    null
+  );
 }
 
-let cachedData: TrafficStopsDatabase | null = null;
-let cacheTime: number = 0;
-const CACHE_TTL = 60000; // 1 minute cache
+function yearOf(date: string): number {
+  return parseInt(date.slice(0, 4), 10);
+}
 
-async function getTrafficData(): Promise<TrafficStopsDatabase> {
-  const now = Date.now();
-  if (cachedData && now - cacheTime < CACHE_TTL) {
-    return cachedData;
-  }
+function monthOf(date: string): string {
+  return date.slice(0, 7); // YYYY-MM
+}
 
-  const dataPath = path.join(process.cwd(), 'data', 'traffic-stops.json');
-  const raw = await fs.readFile(dataPath, 'utf-8');
-  cachedData = JSON.parse(raw);
-  cacheTime = now;
-  return cachedData!;
+function hourOf(time: string | null): number | null {
+  if (!time) return null;
+  const [hh] = time.split(':');
+  const h = parseInt(hh, 10);
+  return isNaN(h) ? null : h;
+}
+
+function dowOf(date: string): number {
+  // Parse as UTC date to keep day-of-week stable regardless of server timezone
+  const d = new Date(`${date}T00:00:00Z`);
+  return d.getUTCDay();
+}
+
+interface QueryResult {
+  totalFiltered: number;
+  byYear: Record<number, number>;
+  byMonth: Record<string, number>;
+  byPrecinct: Record<string, number>;
+  byZipCode: Record<string, number>;
+  byDisposition: Record<string, number>;
+  byPlanningDistrict: Record<string, number>;
+  byDayOfWeek: Record<number, number>;
+  byHour: Record<number, number>;
+  comparison?: {
+    year1: number;
+    year2: number;
+    year1Count: number;
+    year2Count: number;
+    change: number;
+    changePercent: number;
+    byPrecinct: Array<{
+      precinct: string;
+      year1: number;
+      year2: number;
+      change: number;
+      changePercent: number;
+    }>;
+    byMonth: Array<{
+      month: number;
+      year1: number;
+      year2: number;
+      change: number;
+    }>;
+  };
 }
 
 /**
  * POST /api/admin/traffic-stops/query
- * Query traffic stops with filters and get aggregated results
+ * Query traffic stops with filters and get aggregated results.
+ * Reads from Supabase enforcement_records (source='mpd').
  */
 export async function POST(request: NextRequest) {
   try {
@@ -53,70 +88,54 @@ export async function POST(request: NextRequest) {
       dispositions,
       planningDistricts,
       compareYears,
-      groupBy = 'month', // month, precinct, zipCode, disposition, planningDistrict
+    }: {
+      years?: number[];
+      precincts?: string[];
+      zipCodes?: string[];
+      dispositions?: string[];
+      planningDistricts?: string[];
+      compareYears?: number[];
     } = body;
 
-    const db = await getTrafficData();
-    let stops = db.stops;
+    const supabase = getAdminClient();
+    const { data, error } = await supabase
+      .from('enforcement_records')
+      .select('date, time, precinct, zip_code, disposition_code, raw_data')
+      .eq('source', 'mpd');
 
-    // Apply filters
-    if (years && years.length > 0) {
-      stops = stops.filter((s) => {
-        const year = new Date(s.reportedDatetime).getFullYear();
-        return years.includes(year);
-      });
+    if (error) {
+      console.error('[traffic-stops/query] fetch failed:', error);
+      return NextResponse.json(
+        { error: error.message || 'Query failed' },
+        { status: 500 },
+      );
     }
 
-    if (precincts && precincts.length > 0) {
-      stops = stops.filter((s) => precincts.includes(s.mpdPrecinct));
-    }
+    const allRows = (data ?? []) as EnforcementRow[];
 
-    if (zipCodes && zipCodes.length > 0) {
-      stops = stops.filter((s) => zipCodes.includes(s.zipCode));
-    }
+    // Apply filters (done in-memory after fetch — simpler than chaining conditional SQL)
+    const filtered = allRows.filter((r) => {
+      if (years && years.length > 0) {
+        if (!years.includes(yearOf(r.date))) return false;
+      }
+      if (precincts && precincts.length > 0) {
+        if (!r.precinct || !precincts.includes(r.precinct)) return false;
+      }
+      if (zipCodes && zipCodes.length > 0) {
+        if (!r.zip_code || !zipCodes.includes(r.zip_code)) return false;
+      }
+      if (dispositions && dispositions.length > 0) {
+        if (!r.disposition_code || !dispositions.includes(r.disposition_code)) return false;
+      }
+      if (planningDistricts && planningDistricts.length > 0) {
+        const pd = planningDistrictOf(r.raw_data);
+        if (!pd || !planningDistricts.includes(pd)) return false;
+      }
+      return true;
+    });
 
-    if (dispositions && dispositions.length > 0) {
-      stops = stops.filter((s) => dispositions.includes(s.dispositionCode));
-    }
-
-    if (planningDistricts && planningDistricts.length > 0) {
-      stops = stops.filter((s) => planningDistricts.includes(s.planningDistrict));
-    }
-
-    // Calculate aggregations
-    const result: {
-      totalFiltered: number;
-      byYear: Record<number, number>;
-      byMonth: Record<string, number>;
-      byPrecinct: Record<string, number>;
-      byZipCode: Record<string, number>;
-      byDisposition: Record<string, number>;
-      byPlanningDistrict: Record<string, number>;
-      byDayOfWeek: Record<number, number>;
-      byHour: Record<number, number>;
-      comparison?: {
-        year1: number;
-        year2: number;
-        year1Count: number;
-        year2Count: number;
-        change: number;
-        changePercent: number;
-        byPrecinct: Array<{
-          precinct: string;
-          year1: number;
-          year2: number;
-          change: number;
-          changePercent: number;
-        }>;
-        byMonth: Array<{
-          month: number;
-          year1: number;
-          year2: number;
-          change: number;
-        }>;
-      };
-    } = {
-      totalFiltered: stops.length,
+    const result: QueryResult = {
+      totalFiltered: filtered.length,
       byYear: {},
       byMonth: {},
       byPrecinct: {},
@@ -127,77 +146,61 @@ export async function POST(request: NextRequest) {
       byHour: {},
     };
 
-    // Aggregate
-    for (const stop of stops) {
-      const date = new Date(stop.reportedDatetime);
-      const year = date.getFullYear();
-      const month = `${year}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      const dow = date.getDay();
-      const hour = date.getHours();
+    for (const r of filtered) {
+      const year = yearOf(r.date);
+      const month = monthOf(r.date);
+      const dow = dowOf(r.date);
+      const hour = hourOf(r.time);
 
-      result.byYear[year] = (result.byYear[year] || 0) + 1;
+      if (!isNaN(year)) result.byYear[year] = (result.byYear[year] || 0) + 1;
       result.byMonth[month] = (result.byMonth[month] || 0) + 1;
       result.byDayOfWeek[dow] = (result.byDayOfWeek[dow] || 0) + 1;
-      result.byHour[hour] = (result.byHour[hour] || 0) + 1;
+      if (hour !== null) result.byHour[hour] = (result.byHour[hour] || 0) + 1;
 
-      if (stop.mpdPrecinct) {
-        result.byPrecinct[stop.mpdPrecinct] = (result.byPrecinct[stop.mpdPrecinct] || 0) + 1;
+      if (r.precinct) result.byPrecinct[r.precinct] = (result.byPrecinct[r.precinct] || 0) + 1;
+      if (r.zip_code) result.byZipCode[r.zip_code] = (result.byZipCode[r.zip_code] || 0) + 1;
+      if (r.disposition_code) {
+        result.byDisposition[r.disposition_code] = (result.byDisposition[r.disposition_code] || 0) + 1;
       }
-      if (stop.zipCode) {
-        result.byZipCode[stop.zipCode] = (result.byZipCode[stop.zipCode] || 0) + 1;
-      }
-      if (stop.dispositionCode) {
-        result.byDisposition[stop.dispositionCode] = (result.byDisposition[stop.dispositionCode] || 0) + 1;
-      }
-      if (stop.planningDistrict) {
-        result.byPlanningDistrict[stop.planningDistrict] = (result.byPlanningDistrict[stop.planningDistrict] || 0) + 1;
-      }
+      const pd = planningDistrictOf(r.raw_data);
+      if (pd) result.byPlanningDistrict[pd] = (result.byPlanningDistrict[pd] || 0) + 1;
     }
 
-    // Year-over-year comparison
+    // Year-over-year comparison operates on the unfiltered dataset to match the prior behavior
     if (compareYears && compareYears.length === 2) {
-      const [year1, year2] = compareYears.sort((a: number, b: number) => a - b);
+      const [year1, year2] = [...compareYears].sort((a, b) => a - b);
 
-      const year1Stops = db.stops.filter((s) => {
-        const y = new Date(s.reportedDatetime).getFullYear();
-        return y === year1;
-      });
-      const year2Stops = db.stops.filter((s) => {
-        const y = new Date(s.reportedDatetime).getFullYear();
-        return y === year2;
-      });
+      const year1Rows = allRows.filter((r) => yearOf(r.date) === year1);
+      const year2Rows = allRows.filter((r) => yearOf(r.date) === year2);
 
-      // By precinct comparison
       const precinctComparison: Record<string, { year1: number; year2: number }> = {};
-      for (const s of year1Stops) {
-        if (s.mpdPrecinct) {
-          precinctComparison[s.mpdPrecinct] = precinctComparison[s.mpdPrecinct] || { year1: 0, year2: 0 };
-          precinctComparison[s.mpdPrecinct].year1++;
+      for (const r of year1Rows) {
+        if (r.precinct) {
+          precinctComparison[r.precinct] ??= { year1: 0, year2: 0 };
+          precinctComparison[r.precinct].year1++;
         }
       }
-      for (const s of year2Stops) {
-        if (s.mpdPrecinct) {
-          precinctComparison[s.mpdPrecinct] = precinctComparison[s.mpdPrecinct] || { year1: 0, year2: 0 };
-          precinctComparison[s.mpdPrecinct].year2++;
+      for (const r of year2Rows) {
+        if (r.precinct) {
+          precinctComparison[r.precinct] ??= { year1: 0, year2: 0 };
+          precinctComparison[r.precinct].year2++;
         }
       }
 
-      // By month comparison (1-12)
       const monthComparison: Record<number, { year1: number; year2: number }> = {};
-      for (let m = 1; m <= 12; m++) {
-        monthComparison[m] = { year1: 0, year2: 0 };
+      for (let m = 1; m <= 12; m++) monthComparison[m] = { year1: 0, year2: 0 };
+
+      for (const r of year1Rows) {
+        const m = parseInt(r.date.slice(5, 7), 10);
+        if (m >= 1 && m <= 12) monthComparison[m].year1++;
       }
-      for (const s of year1Stops) {
-        const m = new Date(s.reportedDatetime).getMonth() + 1;
-        monthComparison[m].year1++;
-      }
-      for (const s of year2Stops) {
-        const m = new Date(s.reportedDatetime).getMonth() + 1;
-        monthComparison[m].year2++;
+      for (const r of year2Rows) {
+        const m = parseInt(r.date.slice(5, 7), 10);
+        if (m >= 1 && m <= 12) monthComparison[m].year2++;
       }
 
-      const year1Count = year1Stops.length;
-      const year2Count = year2Stops.length;
+      const year1Count = year1Rows.length;
+      const year2Count = year2Rows.length;
       const change = year2Count - year1Count;
       const changePercent = year1Count > 0 ? Math.round((change / year1Count) * 1000) / 10 : 0;
 
@@ -209,20 +212,21 @@ export async function POST(request: NextRequest) {
         change,
         changePercent,
         byPrecinct: Object.entries(precinctComparison)
-          .map(([precinct, data]) => ({
+          .map(([precinct, d]) => ({
             precinct,
-            year1: data.year1,
-            year2: data.year2,
-            change: data.year2 - data.year1,
-            changePercent: data.year1 > 0 ? Math.round(((data.year2 - data.year1) / data.year1) * 1000) / 10 : 0,
+            year1: d.year1,
+            year2: d.year2,
+            change: d.year2 - d.year1,
+            changePercent:
+              d.year1 > 0 ? Math.round(((d.year2 - d.year1) / d.year1) * 1000) / 10 : 0,
           }))
           .sort((a, b) => Math.abs(b.change) - Math.abs(a.change)),
         byMonth: Object.entries(monthComparison)
-          .map(([month, data]) => ({
-            month: parseInt(month),
-            year1: data.year1,
-            year2: data.year2,
-            change: data.year2 - data.year1,
+          .map(([month, d]) => ({
+            month: parseInt(month, 10),
+            year1: d.year1,
+            year2: d.year2,
+            change: d.year2 - d.year1,
           }))
           .sort((a, b) => a.month - b.month),
       };
@@ -230,10 +234,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error('Query error:', error);
+    console.error('[traffic-stops/query] error:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Query failed' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

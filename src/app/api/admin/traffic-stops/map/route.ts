@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
-import path from 'path';
+import { getEnforcementStats } from '@/lib/db/enforcement-store';
 
 // Memphis ZIP code approximate coordinates
 const ZIP_COORDINATES: Record<string, { lat: number; lng: number }> = {
@@ -71,52 +70,41 @@ interface MapDataPoint {
 
 /**
  * GET /api/admin/traffic-stops/map
- * Returns aggregated ticket data for map visualization
+ * Returns aggregated ticket data for map visualization.
+ * Reads from Supabase enforcement_records (source='mpd').
  *
  * Query params:
  * - groupBy: 'zip' | 'precinct' (default: 'zip')
- * - year: filter by year
  */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const groupBy = searchParams.get('groupBy') || 'zip';
-    const yearFilter = searchParams.get('year');
 
-    // Read traffic stats
-    const statsPath = path.join(process.cwd(), 'data', 'traffic-stats.json');
-    const statsRaw = await fs.readFile(statsPath, 'utf-8');
-    const stats = JSON.parse(statsRaw);
-
+    const stats = await getEnforcementStats('mpd');
     const mapData: MapDataPoint[] = [];
 
     if (groupBy === 'precinct') {
-      // Aggregate by precinct
-      const byPrecinct = stats.stats?.byPrecinct || {};
-
-      Object.entries(byPrecinct).forEach(([precinct, count]) => {
+      Object.entries(stats.stats.byPrecinct).forEach(([precinct, count]) => {
         const coords = PRECINCT_COORDINATES[precinct] || PRECINCT_COORDINATES['UNKNOWN'];
         mapData.push({
           id: `precinct-${precinct}`,
           lat: coords.lat,
           lng: coords.lng,
-          count: count as number,
+          count,
           label: precinct,
           precinct,
         });
       });
     } else {
-      // Aggregate by ZIP code
-      const byZip = stats.stats?.byZipCode || {};
-
-      Object.entries(byZip).forEach(([zip, count]) => {
+      Object.entries(stats.stats.byZipCode).forEach(([zip, count]) => {
         const coords = ZIP_COORDINATES[zip];
         if (coords) {
           mapData.push({
             id: `zip-${zip}`,
             lat: coords.lat,
             lng: coords.lng,
-            count: count as number,
+            count,
             label: zip,
             zipCode: zip,
           });
@@ -124,7 +112,6 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Sort by count descending
     mapData.sort((a, b) => b.count - a.count);
 
     return NextResponse.json({
@@ -134,12 +121,12 @@ export async function GET(request: NextRequest) {
       groupBy,
     });
   } catch (error) {
-    console.error('Map data error:', error);
+    console.error('[traffic-stops/map] error:', error);
     return NextResponse.json({
       locations: [],
       totalPoints: 0,
       totalTickets: 0,
-      error: 'Failed to load map data',
+      error: error instanceof Error ? error.message : 'Failed to load map data',
     });
   }
 }
