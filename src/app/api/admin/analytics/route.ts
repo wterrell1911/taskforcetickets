@@ -9,8 +9,7 @@ import {
 
 export async function GET(request: NextRequest) {
   const type = request.nextUrl.searchParams.get('type');
-  const days = parseInt(request.nextUrl.searchParams.get('days') || '90');
-
+  const days = parseInt(request.nextUrl.searchParams.get('days') || '365');
   try {
     switch (type) {
       case 'zones': {
