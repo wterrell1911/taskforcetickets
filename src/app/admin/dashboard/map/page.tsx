@@ -45,7 +45,7 @@ export default function MapPage() {
   }, [groupBy]);
 
   // Find top locations
-  const topLocations = mapData?.locations.slice(0, 10) || [];
+  const topLocations = mapData?.locations?.slice(0, 10) || [];
 
   return (
     <AdminLayout>
