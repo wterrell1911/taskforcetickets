@@ -111,10 +111,10 @@ export class MemphisDataClient {
 
     // Date filtering using ArcGIS DATE syntax: DATE 'YYYY-MM-DD'
     if (options.startDate) {
-      whereClauses.push(`Reported_Datetime >= DATE '${options.startDate}'`);
+     whereClauses.push(`Reported_Datetime >= TIMESTAMP '${options.startDate} 00:00:00'`);
     }
     if (options.endDate) {
-      whereClauses.push(`Reported_Datetime <= DATE '${options.endDate}'`);
+    whereClauses.push(`Reported_Datetime <= TIMESTAMP '${options.endDate} 23:59:59'`);
     }
 
     // Default to '1=1' if no filters, otherwise join with AND
