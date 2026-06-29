@@ -102,7 +102,7 @@ export default function SyncPage() {
                 <div className="text-right">
                   <p className="text-sm text-[#4A4A4A]">Records</p>
                   <p className="font-medium text-[#1A1A1A]">
-                    {lastSync.recordsProcessed.toLocaleString()}
+                    {lastSync.recordsProcessed?.toLocaleString() ?? '0'}
                   </p>
                 </div>
               </div>
