@@ -5,7 +5,8 @@ import {
   getZoneAnalysis,
   getTrendData,
   getOffenseDistribution,
-} from '@/lib/db/store';
+  getRecordCount,
+} from '@/lib/db/enforcement-store';
 
 export async function GET(request: NextRequest) {
   const type = request.nextUrl.searchParams.get('type');
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
       case 'enforcement': {
         const source = request.nextUrl.searchParams.get('source') || undefined;
         const zone = request.nextUrl.searchParams.get('zone') || undefined;
-        const data = await getEnforcementRecords({ source, zone });
+        const data = await getEnforcementRecords({ source, precinct: zone });
         return NextResponse.json({ data, count: data.length });
       }
 
@@ -42,20 +43,24 @@ export async function GET(request: NextRequest) {
       }
 
       case 'summary': {
-        const [enforcement, intake, zones] = await Promise.all([
-          getEnforcementRecords(),
+        // Use getRecordCount() for the headline total so it reflects the full
+        // table (~16k+) instead of a query capped at 1000 rows.
+        const [totalEnforcement, intake, zones] = await Promise.all([
+          getRecordCount(),
           getIntakeAnalytics(),
           getZoneAnalysis(days),
         ]);
 
+        const totalIntake = intake.length;
+
         return NextResponse.json({
           summary: {
-            totalEnforcement: enforcement.length,
-            totalIntake: intake.length,
+            totalEnforcement,
+            totalIntake,
             topOpportunityZones: zones.slice(0, 5),
             overallConversionRate:
-              enforcement.length > 0
-                ? ((intake.length / enforcement.length) * 100).toFixed(2)
+              totalEnforcement > 0
+                ? ((totalIntake / totalEnforcement) * 100).toFixed(2)
                 : 0,
           },
         });

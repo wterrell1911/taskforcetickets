@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getZoneAnalysis } from '@/lib/db/store';
+import { getZoneAnalysis } from '@/lib/db/enforcement-store';
 
 export async function GET(request: NextRequest) {
   const days = parseInt(request.nextUrl.searchParams.get('days') || '90');

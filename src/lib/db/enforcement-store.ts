@@ -5,6 +5,7 @@
  */
 
 import { getAdminClient } from './supabase';
+import { IntakeAnalytics } from '@/types/admin';
 
 export interface EnforcementRecord {
   id?: string;
@@ -360,6 +361,179 @@ export async function getRecordCount(startDate?: string, endDate?: string): Prom
   }
 
   return count || 0;
+}
+
+/**
+ * Intake analytics (cases we've submitted).
+ *
+ * No intake/cases table is wired into this store yet, so this returns an empty
+ * set. Callers treat intake volume as 0 (conversion rates default to 0) so the
+ * enforcement-side numbers still render. Mirrors the shape of the old mock store.
+ */
+export async function getIntakeAnalytics(_filters?: {
+  startDate?: string;
+  endDate?: string;
+  zone?: string;
+}): Promise<IntakeAnalytics[]> {
+  void _filters;
+  return [];
+}
+
+function getWeekStart(dateStr: string): string {
+  const date = new Date(dateStr);
+  const day = date.getDay();
+  const diff = date.getDate() - day;
+  date.setDate(diff);
+  return date.toISOString().split('T')[0];
+}
+
+/**
+ * Zone analysis: enforcement volume vs. intake volume per zone, with an
+ * opportunity score. Zone maps to the real `ward`/`precinct` columns. Reuses
+ * fetchAllEnforcementRecords so all rows (not a 1000-row page) are aggregated.
+ */
+export async function getZoneAnalysis(days: number = 90): Promise<{
+  zone: string;
+  enforcementVolume: number;
+  intakeVolume: number;
+  conversionRate: number;
+  opportunityScore: number;
+}[]> {
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - days);
+  const cutoff = cutoffDate.toISOString().split('T')[0];
+
+  const rows = await fetchAllEnforcementRecords<{
+    date: string | null;
+    ward: string | null;
+    precinct: string | null;
+  }>('mpd', 'date, ward, precinct');
+  const intake = await getIntakeAnalytics({ startDate: cutoff });
+
+  const enforcementByZone: Record<string, number> = {};
+  const intakeByZone: Record<string, number> = {};
+
+  for (const r of rows) {
+    if (r.date && r.date < cutoff) continue;
+    const zone = r.ward || r.precinct || 'Unknown';
+    enforcementByZone[zone] = (enforcementByZone[zone] || 0) + 1;
+  }
+
+  intake.forEach(r => {
+    const zone = r.zone || 'Unknown';
+    intakeByZone[zone] = (intakeByZone[zone] || 0) + 1;
+  });
+
+  const allZones = new Set([...Object.keys(enforcementByZone), ...Object.keys(intakeByZone)]);
+
+  return Array.from(allZones).map(zone => {
+    const enforcementVolume = enforcementByZone[zone] || 0;
+    const intakeVolume = intakeByZone[zone] || 0;
+    const conversionRate = enforcementVolume > 0 ? (intakeVolume / enforcementVolume) * 100 : 0;
+    // Opportunity score: high enforcement + low conversion = high opportunity
+    const opportunityScore = enforcementVolume * (1 - conversionRate / 100);
+
+    return {
+      zone,
+      enforcementVolume,
+      intakeVolume,
+      conversionRate: Math.round(conversionRate * 100) / 100,
+      opportunityScore: Math.round(opportunityScore),
+    };
+  }).sort((a, b) => b.opportunityScore - a.opportunityScore);
+}
+
+/**
+ * Trend data: enforcement vs. intake counts over time, grouped by day or week.
+ */
+export async function getTrendData(days: number = 90, groupBy: 'day' | 'week' = 'day'): Promise<{
+  date: string;
+  enforcement: number;
+  intake: number;
+}[]> {
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - days);
+  const cutoff = cutoffDate.toISOString().split('T')[0];
+
+  const rows = await fetchAllEnforcementRecords<{ date: string | null }>('mpd', 'date');
+  const intake = await getIntakeAnalytics({ startDate: cutoff });
+
+  const enforcementByDate: Record<string, number> = {};
+  const intakeByDate: Record<string, number> = {};
+
+  for (const r of rows) {
+    if (!r.date || r.date < cutoff) continue;
+    const date = groupBy === 'week' ? getWeekStart(r.date) : r.date;
+    enforcementByDate[date] = (enforcementByDate[date] || 0) + 1;
+  }
+
+  intake.forEach(r => {
+    const date = groupBy === 'week' ? getWeekStart(r.createdAt.split('T')[0]) : r.createdAt.split('T')[0];
+    intakeByDate[date] = (intakeByDate[date] || 0) + 1;
+  });
+
+  const allDates = new Set([...Object.keys(enforcementByDate), ...Object.keys(intakeByDate)]);
+
+  return Array.from(allDates)
+    .sort()
+    .map(date => ({
+      date,
+      enforcement: enforcementByDate[date] || 0,
+      intake: intakeByDate[date] || 0,
+    }));
+}
+
+/**
+ * Offense distribution: enforcement vs. intake share by violation category,
+ * with the gap between the two.
+ */
+export async function getOffenseDistribution(): Promise<{
+  category: string;
+  enforcementCount: number;
+  enforcementPercent: number;
+  intakeCount: number;
+  intakePercent: number;
+  gap: number;
+}[]> {
+  const rows = await fetchAllEnforcementRecords<{ violation_category: string | null }>(
+    'mpd',
+    'violation_category',
+  );
+  const intake = await getIntakeAnalytics();
+
+  const enforcementByCategory: Record<string, number> = {};
+  const intakeByCategory: Record<string, number> = {};
+
+  for (const r of rows) {
+    const cat = r.violation_category || 'other';
+    enforcementByCategory[cat] = (enforcementByCategory[cat] || 0) + 1;
+  }
+
+  intake.forEach(r => {
+    const cat = r.violationCategory || 'other';
+    intakeByCategory[cat] = (intakeByCategory[cat] || 0) + 1;
+  });
+
+  const totalEnforcement = Object.values(enforcementByCategory).reduce((a, b) => a + b, 0);
+  const totalIntake = Object.values(intakeByCategory).reduce((a, b) => a + b, 0);
+
+  const categories = ['speed', 'equipment', 'registration', 'license', 'insurance', 'other'];
+
+  return categories.map(category => {
+    const enforcementCount = enforcementByCategory[category] || 0;
+    const intakeCount = intakeByCategory[category] || 0;
+    const enforcementPercent = totalEnforcement > 0 ? (enforcementCount / totalEnforcement) * 100 : 0;
+    const intakePercent = totalIntake > 0 ? (intakeCount / totalIntake) * 100 : 0;
+
+    return {
+      category,
+      enforcementCount,
+      enforcementPercent: Math.round(enforcementPercent * 10) / 10,
+      intakeCount,
+      intakePercent: Math.round(intakePercent * 10) / 10,
+      gap: Math.round((enforcementPercent - intakePercent) * 10) / 10,
+    };
+  });
 }
 
 // Helper functions to map between DB and app formats
