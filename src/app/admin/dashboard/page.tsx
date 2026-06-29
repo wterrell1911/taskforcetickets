@@ -130,7 +130,7 @@ export default function AdminDashboard() {
         />
 
         {/* MPD Traffic Stats */}
-        {trafficStats && (
+        {trafficStats && trafficStats.topPrecincts && trafficStats.topZipCodes && trafficStats.yearlyTrend && (
           <div className="bg-white rounded-xl shadow-sm border border-[#E5E5E5] p-6">
             <div className="flex items-center justify-between mb-6">
               <div>
