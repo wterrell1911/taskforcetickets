@@ -275,13 +275,10 @@ export async function syncMPDData(options: {
   try {
     options.onProgress?.('Starting MPD data sync...', 0);
 
-    // Default to last 30 days if no start date specified
-    let effectiveStartDate = options.startDate;
+    // No date filter unless one is explicitly provided (data may be historical)
+    const effectiveStartDate = options.startDate;
     if (!effectiveStartDate) {
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      effectiveStartDate = thirtyDaysAgo.toISOString().split('T')[0];
-      console.log(`[Sync] No start date specified, defaulting to last 30 days: ${effectiveStartDate}`);
+      console.log('[Sync] No start date specified, syncing all available records');
     }
 
     // Clear existing MPD records before sync
