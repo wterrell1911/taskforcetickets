@@ -168,9 +168,10 @@ export class MemphisDataClient {
   // Transform ArcGIS data to our enforcement record format
   transformToEnforcementRecord(stop: ArcGISTrafficStop): Omit<EnforcementRecord, 'id' | 'createdAt' | 'updatedAt'> {
     // Convert Unix timestamp (ms) to ISO date string
-    const reportedDate = stop.Reported_Datetime
-      ? new Date(stop.Reported_Datetime)
-      : new Date();
+   let reportedDate = new Date(stop.Reported_Datetime ?? NaN);
+    if (isNaN(reportedDate.getTime())) {
+      reportedDate = new Date(); // fallback for missing/invalid timestamps
+    }
 
     const dateStr = reportedDate.toISOString().split('T')[0];
     const timeStr = reportedDate.toTimeString().slice(0, 5); // HH:MM
