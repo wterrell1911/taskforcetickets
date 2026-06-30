@@ -7,91 +7,87 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
+  Cell,
 } from 'recharts';
 
-interface DistributionData {
-  category: string;
-  enforcementPercent: number;
-  intakePercent: number;
-  gap: number;
+interface OutcomeData {
+  code: string;
+  label: string;
+  count: number;
+  percent: number;
 }
 
 interface DistributionChartProps {
-  data: DistributionData[];
+  data: OutcomeData[];
 }
 
-const categoryLabels: Record<string, string> = {
-  speed: 'Speeding',
-  equipment: 'Equipment',
-  registration: 'Registration',
-  license: 'License',
-  insurance: 'Insurance',
-  other: 'Other',
-};
+// Citations are the addressable market — highlight them; everything else muted.
+function barColor(code: string): string {
+  if (code === 'CITATION') return '#CF2A27';
+  if (code === 'ADV' || code === 'CTSY') return '#FFD100';
+  return '#9CA3AF';
+}
 
 export function DistributionChart({ data }: DistributionChartProps) {
-  const chartData = data.map((d) => ({
-    ...d,
-    name: categoryLabels[d.category] || d.category,
-  }));
+  // Show the most significant outcomes; collapse the long tail into "Other".
+  const TOP = 7;
+  const sorted = [...data].sort((a, b) => b.count - a.count);
+  const head = sorted.slice(0, TOP);
+  const tail = sorted.slice(TOP);
+  const chartData = [...head];
+  if (tail.length > 0) {
+    chartData.push({
+      code: 'OTHER',
+      label: `Other (${tail.length} codes)`,
+      count: tail.reduce((s, d) => s + d.count, 0),
+      percent: Math.round(tail.reduce((s, d) => s + d.percent, 0) * 10) / 10,
+    });
+  }
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-[#E5E5E5] p-6">
-      <h3 className="font-semibold text-[#1A1A1A] mb-2">Offense Distribution Comparison</h3>
+      <h3 className="font-semibold text-[#1A1A1A] mb-2">Stop Outcomes</h3>
       <p className="text-sm text-[#4A4A4A] mb-6">
-        Compare what&apos;s being written vs. what we&apos;re processing
+        How Memphis traffic stops are resolved (by disposition code)
       </p>
       <div className="h-80">
         {data.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} layout="vertical">
+            <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 24 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E5" />
               <XAxis type="number" unit="%" tick={{ fontSize: 12 }} stroke="#4A4A4A" />
-              <YAxis dataKey="name" type="category" tick={{ fontSize: 12 }} stroke="#4A4A4A" width={100} />
+              <YAxis
+                dataKey="label"
+                type="category"
+                tick={{ fontSize: 12 }}
+                stroke="#4A4A4A"
+                width={150}
+              />
               <Tooltip
                 contentStyle={{
                   backgroundColor: '#fff',
                   border: '1px solid #E5E5E5',
                   borderRadius: '8px',
                 }}
-                formatter={(value) => `${Number(value).toFixed(1)}%`}
+                formatter={(value, _name, item) => [
+                  `${Number(value).toFixed(1)}% (${item?.payload?.count?.toLocaleString()} stops)`,
+                  'Share',
+                ]}
               />
-              <Legend />
-              <Bar dataKey="enforcementPercent" fill="#CF2A27" name="Enforcement %" />
-              <Bar dataKey="intakePercent" fill="#FFD100" name="Our Intake %" />
+              <Bar dataKey="percent" name="Share">
+                {chartData.map((d) => (
+                  <Cell key={d.code} fill={barColor(d.code)} />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         ) : (
           <div className="h-full flex items-center justify-center text-[#4A4A4A]">
-            No distribution data available
+            No outcome data available
           </div>
         )}
       </div>
-
-      {/* Gap indicators */}
-      {data.length > 0 && (
-        <div className="mt-6 border-t border-[#E5E5E5] pt-4">
-          <p className="text-sm font-medium text-[#1A1A1A] mb-3">Underrepresented in Intake:</p>
-          <div className="flex flex-wrap gap-2">
-            {data
-              .filter((d) => d.gap > 2)
-              .sort((a, b) => b.gap - a.gap)
-              .map((d) => (
-                <span
-                  key={d.category}
-                  className="px-3 py-1 bg-[#FFD100]/20 text-[#1A1A1A] rounded-full text-sm"
-                >
-                  {categoryLabels[d.category]} (+{d.gap.toFixed(1)}% gap)
-                </span>
-              ))}
-            {data.filter((d) => d.gap > 2).length === 0 && (
-              <span className="text-[#4A4A4A] text-sm">All categories well represented</span>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

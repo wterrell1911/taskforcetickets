@@ -536,6 +536,62 @@ export async function getOffenseDistribution(): Promise<{
   });
 }
 
+/**
+ * Friendly labels for the MPD Disposition_Code values. Only high-confidence
+ * codes are labelled; unknown codes fall back to the raw code so nothing is
+ * mislabelled. (The source dataset has no per-stop violation/charge, so the
+ * disposition — the outcome of the stop — is the only real "type" available.)
+ */
+const DISPOSITION_LABELS: Record<string, string> = {
+  CITATION: 'Citation (ticket issued)',
+  ADV: 'Advised (warning)',
+  CTSY: 'Courtesy (warning)',
+  ARREST: 'Arrest',
+  TOW: 'Vehicle towed',
+  REPORT: 'Report filed',
+  CITYORD: 'City ordinance',
+  'DRIVE OFF': 'Drove off',
+  JUV: 'Juvenile',
+  MEMO: 'Memo',
+};
+
+export interface OutcomeDistribution {
+  code: string;
+  label: string;
+  count: number;
+  percent: number;
+}
+
+/**
+ * Outcome distribution: groups stops by Disposition_Code (citation vs warning
+ * vs arrest, etc.). Replaces the offense-category distribution, which was
+ * always 100% "other" because the source data carries no violation type.
+ * One row per disposition code, sorted by count descending.
+ */
+export async function getOutcomeDistribution(): Promise<OutcomeDistribution[]> {
+  const rows = await fetchAllEnforcementRecords<{ disposition_code: string | null }>(
+    'mpd',
+    'disposition_code',
+  );
+
+  const byCode: Record<string, number> = {};
+  for (const r of rows) {
+    const code = (r.disposition_code || 'UNKNOWN').toUpperCase();
+    byCode[code] = (byCode[code] || 0) + 1;
+  }
+
+  const total = Object.values(byCode).reduce((a, b) => a + b, 0);
+
+  return Object.entries(byCode)
+    .map(([code, count]) => ({
+      code,
+      label: DISPOSITION_LABELS[code] || code,
+      count,
+      percent: total > 0 ? Math.round((count / total) * 1000) / 10 : 0,
+    }))
+    .sort((a, b) => b.count - a.count);
+}
+
 // Helper functions to map between DB and app formats
 function mapDbToRecord(db: Record<string, unknown>): EnforcementRecord {
   return {

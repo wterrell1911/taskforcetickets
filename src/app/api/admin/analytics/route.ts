@@ -4,7 +4,7 @@ import {
   getIntakeAnalytics,
   getZoneAnalysis,
   getTrendData,
-  getOffenseDistribution,
+  getOutcomeDistribution,
   getRecordCount,
 } from '@/lib/db/enforcement-store';
 
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
       }
 
       case 'distribution': {
-        const data = await getOffenseDistribution();
+        const data = await getOutcomeDistribution();
         return NextResponse.json({ data });
       }
 

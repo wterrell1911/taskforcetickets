@@ -3,27 +3,17 @@
 import { useEffect, useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { DistributionChart } from '@/components/admin/DistributionChart';
+import { StatCard } from '@/components/admin/StatCard';
 
-interface DistributionData {
-  category: string;
-  enforcementCount: number;
-  enforcementPercent: number;
-  intakeCount: number;
-  intakePercent: number;
-  gap: number;
+interface OutcomeData {
+  code: string;
+  label: string;
+  count: number;
+  percent: number;
 }
 
-const categoryLabels: Record<string, string> = {
-  speed: 'Speeding',
-  equipment: 'Equipment',
-  registration: 'Registration',
-  license: 'License',
-  insurance: 'Insurance',
-  other: 'Other',
-};
-
 export default function DistributionPage() {
-  const [distribution, setDistribution] = useState<DistributionData[]>([]);
+  const [outcomes, setOutcomes] = useState<OutcomeData[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,9 +21,9 @@ export default function DistributionPage() {
       try {
         const res = await fetch('/api/admin/analytics?type=distribution');
         const data = await res.json();
-        setDistribution(data.data || []);
+        setOutcomes(data.data || []);
       } catch (error) {
-        console.error('Failed to fetch distribution data:', error);
+        console.error('Failed to fetch outcome data:', error);
       } finally {
         setLoading(false);
       }
@@ -42,16 +32,22 @@ export default function DistributionPage() {
     fetchData();
   }, []);
 
-  const underrepresented = distribution.filter((d) => d.gap > 2).sort((a, b) => b.gap - a.gap);
-  const overrepresented = distribution.filter((d) => d.gap < -2).sort((a, b) => a.gap - b.gap);
+  const find = (code: string) => outcomes.find((o) => o.code === code);
+  const total = outcomes.reduce((s, o) => s + o.count, 0);
+  const citations = find('CITATION');
+  const warnings = (find('ADV')?.count || 0) + (find('CTSY')?.count || 0);
+  const warningsPct = total > 0 ? Math.round((warnings / total) * 1000) / 10 : 0;
+  const arrests = find('ARREST');
 
   return (
     <AdminLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-[#1A1A1A]">Offense Distribution</h1>
+          <h1 className="text-2xl font-bold text-[#1A1A1A]">Stop Outcomes</h1>
           <p className="text-[#4A4A4A] mt-1">
-            Compare enforcement patterns vs. our intake mix
+            How Memphis traffic stops are resolved. The source data records the
+            outcome of each stop (citation, warning, arrest&hellip;), not the
+            specific violation.
           </p>
         </div>
 
@@ -61,116 +57,66 @@ export default function DistributionPage() {
           </div>
         ) : (
           <>
-            <DistributionChart data={distribution} />
+            {/* Headline outcomes */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              <StatCard
+                title="Citations Issued"
+                value={(citations?.count || 0).toLocaleString()}
+                subtitle={`${(citations?.percent || 0).toFixed(1)}% of stops — your addressable market`}
+              />
+              <StatCard
+                title="Warnings"
+                value={warnings.toLocaleString()}
+                subtitle={`${warningsPct.toFixed(1)}% advised or courtesy`}
+              />
+              <StatCard
+                title="Arrests"
+                value={(arrests?.count || 0).toLocaleString()}
+                subtitle={`${(arrests?.percent || 0).toFixed(1)}% of stops`}
+              />
+            </div>
+
+            <DistributionChart data={outcomes} />
 
             {/* Detailed table */}
             <div className="bg-white rounded-xl shadow-sm border border-[#E5E5E5] overflow-hidden">
               <div className="p-4 border-b border-[#E5E5E5]">
-                <h3 className="font-semibold text-[#1A1A1A]">Detailed Breakdown</h3>
+                <h3 className="font-semibold text-[#1A1A1A]">All Outcomes</h3>
               </div>
               <table className="w-full">
                 <thead className="bg-[#F8F8F8] border-b border-[#E5E5E5]">
                   <tr>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-[#1A1A1A]">
-                      Category
+                      Outcome
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-[#1A1A1A]">
+                      Code
                     </th>
                     <th className="px-4 py-3 text-right text-sm font-semibold text-[#1A1A1A]">
-                      Enforcement Count
+                      Count
                     </th>
                     <th className="px-4 py-3 text-right text-sm font-semibold text-[#1A1A1A]">
-                      Enforcement %
-                    </th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-[#1A1A1A]">
-                      Intake Count
-                    </th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-[#1A1A1A]">
-                      Intake %
-                    </th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-[#1A1A1A]">
-                      Gap
+                      Share
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E5E5E5]/50">
-                  {distribution.map((row) => (
-                    <tr key={row.category} className="hover:bg-[#F8F8F8]">
-                      <td className="px-4 py-3 font-medium text-[#1A1A1A]">
-                        {categoryLabels[row.category]}
+                  {outcomes.map((row) => (
+                    <tr key={row.code} className="hover:bg-[#F8F8F8]">
+                      <td className="px-4 py-3 font-medium text-[#1A1A1A]">{row.label}</td>
+                      <td className="px-4 py-3 text-[#4A4A4A]">
+                        <code className="text-xs">{row.code}</code>
                       </td>
                       <td className="px-4 py-3 text-right text-[#4A4A4A]">
-                        {row.enforcementCount.toLocaleString()}
+                        {row.count.toLocaleString()}
                       </td>
                       <td className="px-4 py-3 text-right text-[#4A4A4A]">
-                        {row.enforcementPercent.toFixed(1)}%
-                      </td>
-                      <td className="px-4 py-3 text-right text-[#4A4A4A]">
-                        {row.intakeCount.toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3 text-right text-[#4A4A4A]">
-                        {row.intakePercent.toFixed(1)}%
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <span
-                          className={`px-2 py-1 rounded text-xs font-medium ${
-                            row.gap > 2
-                              ? 'bg-[#FFD100]/20 text-[#1A1A1A]'
-                              : row.gap < -2
-                              ? 'bg-emerald-100 text-emerald-700'
-                              : 'bg-[#F8F8F8] text-[#4A4A4A]'
-                          }`}
-                        >
-                          {row.gap > 0 ? '+' : ''}
-                          {row.gap.toFixed(1)}%
-                        </span>
+                        {row.percent.toFixed(1)}%
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            </div>
-
-            {/* Recommendations */}
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-[#FFD100]/10 rounded-xl p-6 border border-[#FFD100]/30">
-                <h3 className="font-semibold text-[#1A1A1A] mb-3">Underrepresented (Opportunity)</h3>
-                <p className="text-sm text-[#4A4A4A] mb-4">
-                  These offense types make up more of enforcement than our intake - potential
-                  marketing focus areas:
-                </p>
-                {underrepresented.length > 0 ? (
-                  <ul className="space-y-2">
-                    {underrepresented.map((d) => (
-                      <li key={d.category} className="flex justify-between text-sm">
-                        <span className="text-[#1A1A1A]">{categoryLabels[d.category]}</span>
-                        <span className="font-medium text-[#4A4A4A]">+{d.gap.toFixed(1)}% gap</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-[#4A4A4A]">All categories well represented</p>
-                )}
-              </div>
-
-              <div className="bg-emerald-50 rounded-xl p-6 border border-emerald-200">
-                <h3 className="font-semibold text-emerald-900 mb-3">
-                  Overrepresented (Strong Market)
-                </h3>
-                <p className="text-sm text-emerald-800 mb-4">
-                  These offense types are well-captured in our intake relative to enforcement:
-                </p>
-                {overrepresented.length > 0 ? (
-                  <ul className="space-y-2">
-                    {overrepresented.map((d) => (
-                      <li key={d.category} className="flex justify-between text-sm">
-                        <span className="text-emerald-900">{categoryLabels[d.category]}</span>
-                        <span className="font-medium text-emerald-700">{d.gap.toFixed(1)}% gap</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-emerald-700">No significantly overrepresented categories</p>
-                )}
-              </div>
             </div>
           </>
         )}
